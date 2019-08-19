@@ -19,31 +19,38 @@ namespace Watchlist
 		{
 			if (Directory.Exists(Plugin.ConfigFolerFilePath))
 			{
-				if (long.TryParse(args[0], out long steamid))
+				if (args.Length > 0)
 				{
-					string file = $"{Plugin.ReportBanFolder}{Path.DirectorySeparatorChar}{steamid}.txt";
-					if (File.Exists(file))
+					if (long.TryParse(args[0], out long steamid))
 					{
-						File.Delete(file);
-						return new string[]
+						string file = $"{Plugin.ReportBanFolder}{Path.DirectorySeparatorChar}{steamid}.txt";
+						if (File.Exists(file))
 						{
+							File.Delete(file);
+							return new string[]
+							{
 							"Player successfully unbanned."
-						};
+							};
+						}
+						else
+						{
+							return new string[]
+							{
+							"Player is not banned."
+							};
+						}
 					}
 					else
 					{
 						return new string[]
 						{
-							"Player is not banned."
+						"Error parsing SteamID."
 						};
 					}
 				}
 				else
 				{
-					return new string[]
-					{
-						"Error parsing SteamID."
-					};
+					return new[] { GetUsage() };
 				}
 			}
 			else
