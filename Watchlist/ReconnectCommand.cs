@@ -3,6 +3,8 @@ using System.Net.Sockets;
 
 namespace Watchlist
 {
+	// This command reconnects the plugin to the server if it happens to get disconnected for any reason
+
 	class ReconnectCommand : ICommandHandler
 	{
 		private Plugin instance;

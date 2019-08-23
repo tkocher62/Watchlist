@@ -3,6 +3,7 @@ using System.IO;
 
 namespace Watchlist
 {
+	// This file is the file that initializes the plugin
 	[PluginDetails(
 	author = "Cyanox",
 	name = "Watchlist",
@@ -15,6 +16,7 @@ namespace Watchlist
 	)]
 	public class Plugin : Smod2.Plugin
 	{
+		// Define some files paths for stuff to be saved in
 		public static string ConfigFolerFilePath = $"{FileManager.GetAppFolder()}Watchlist";
 		public static string WatchlistFilePath = $"{ConfigFolerFilePath}{Path.DirectorySeparatorChar}watchlist.json";
 		public static string ReportBanFolder = $"{ConfigFolerFilePath}{Path.DirectorySeparatorChar}ReportBans";
@@ -23,6 +25,7 @@ namespace Watchlist
 
 		public override void OnEnable()
 		{
+			// Create the files paths if they don't already exist
 			if (!Directory.Exists(ConfigFolerFilePath))
 			{
 				Directory.CreateDirectory(ConfigFolerFilePath);
@@ -40,6 +43,7 @@ namespace Watchlist
 
 		public override void Register()
 		{
+			// Register event handlers and the commands needed
 			AddEventHandlers(new EventHandler(this));
 			AddCommand("wreconnect", new ReconnectCommand(this));
 			AddCommand("wban", new BanCommand());

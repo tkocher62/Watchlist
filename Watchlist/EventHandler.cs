@@ -12,17 +12,20 @@ namespace Watchlist
 {
 	partial class EventHandler : IEventHandlerPlayerJoin, IEventHandlerCallCommand
 	{
+		// Define state variables
 		private readonly Plugin instance;
 		public static Socket socket;
 		private const string delim = ">>;?273::::93377JJS";
 
 		public EventHandler(Plugin plugin)
 		{
+			// Initialize state variables and attempt a connection to the bot
 			instance = plugin;
 			socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			socket.Connect("127.0.0.1", 9090);
 		}
 
+		// A method that pings the server to check if a socket is still connected
 		public static bool IsConnected()
 		{
 			if (socket == null)
@@ -39,6 +42,7 @@ namespace Watchlist
 			}
 		}
 
+		// This method checks for a players SteamID64 in the directory of bans, returns true if they're banned from using the system, false otherwise
 		private bool isPlayerBanned(Player player)
 		{
 			if (Directory.Exists(Plugin.ReportBanFolder))
@@ -54,6 +58,8 @@ namespace Watchlist
 			return false;
 		}
 
+		// The event for when a player joins the server. Every time someone connectes, we verify we're connected to the server.
+		// If so, we send a packet with the players SteamID64 under the WATCHLIST command for handling on the bots end
 		public void OnPlayerJoin(PlayerJoinEvent ev)
 		{
 			if (IsConnected())
@@ -62,9 +68,12 @@ namespace Watchlist
 			}
 		}
 
+		// The event for when a player sends a console command.
 		public void OnCallCommand(PlayerCallCommandEvent ev)
 		{
+			// Non case-sensitive
 			string cmd = ev.Command.ToLower();
+			// If a staff member wants to lookup a player in game they can do so as long as they have admin privileges
 			if (cmd.StartsWith("lookup") && ((GameObject)ev.Player.GetGameObject()).GetComponent<ServerRoles>().RemoteAdmin)
 			{
 				string user = cmd.Replace("lookup", "").Trim();
@@ -85,6 +94,7 @@ namespace Watchlist
 					}
 					if (myPlayer != null)
 					{
+						// If we entered a valid player, use a JSON library to parse the json file data and check for the target
 						JObject o = JObject.Parse(File.ReadAllText(Plugin.WatchlistFilePath));
 						if (o.ContainsKey(myPlayer.SteamId))
 						{
@@ -107,16 +117,18 @@ namespace Watchlist
 				else
 				{
 					ev.ReturnMessage = "LOOKUP (NAME / STEAMID / PLAYERID)";
-					return;
 				}
 			}
+			// The report command
 			else if (cmd.StartsWith("report"))
 			{
+				// Check if the player is banned before letting them send a report using the above method
 				if (!isPlayerBanned(ev.Player))
 				{
 					string msg = cmd.Replace("report", "").Trim();
 					if (msg.Length > 0)
 					{
+						// If we specified a valid player, it will send a packet to the server under the REPORT command with all the needed data
 						socket.Send(Encoding.UTF8.GetBytes($"REPORT{delim}{ev.Player.SteamId}{delim}{instance.Server.Port}{delim}{msg}"));
 						ev.ReturnMessage = "Report sent to the staff team.";
 					}

@@ -3,6 +3,8 @@ using System.IO;
 
 namespace Watchlist
 {
+	// This is the file to initialize a command into the game
+
 	class UnbanCommand : ICommandHandler
 	{
 		public string GetCommandDescription()
@@ -17,15 +19,18 @@ namespace Watchlist
 
 		public string[] OnCall(ICommandSender sender, string[] args)
 		{
+			// Verify the correct directories exist
 			if (Directory.Exists(Plugin.ConfigFolerFilePath))
 			{
 				if (args.Length > 0)
 				{
+					// If so, parse the SteamID64 as a long
 					if (long.TryParse(args[0], out long steamid))
 					{
 						string file = $"{Plugin.ReportBanFolder}{Path.DirectorySeparatorChar}{steamid}.txt";
 						if (File.Exists(file))
 						{
+							// If the player is banned, delete the file to unban them
 							File.Delete(file);
 							return new string[]
 							{

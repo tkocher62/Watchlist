@@ -4,6 +4,8 @@ using System.Linq;
 
 namespace Watchlist
 {
+	// This class is just some logic for getting player objects
+
 	partial class EventHandler
 	{
 		private Player GetPlayer(ulong steamid)
