@@ -1,49 +1,55 @@
-﻿using Smod2.Attributes;
+﻿using EXILED;
+using System;
 using System.IO;
 
 namespace Watchlist
 {
-	[PluginDetails(
-	author = "Cyanox",
-	name = "Watchlist",
-	description = "Informs discord staff when a trouble maker enters the server.",
-	id = "cyan.watchlist",
-	version = "1.0.0",
-	SmodMajor = 3,
-	SmodMinor = 0,
-	SmodRevision = 0
-	)]
-	public class Plugin : Smod2.Plugin
+	public class Plugin : EXILED.Plugin
 	{
-		public static string ConfigFolerFilePath = $"{FileManager.GetAppFolder()}Watchlist";
-		public static string WatchlistFilePath = $"{ConfigFolerFilePath}{Path.DirectorySeparatorChar}watchlist.json";
-		public static string ReportBanFolder = $"{ConfigFolerFilePath}{Path.DirectorySeparatorChar}ReportBans";
+		private EventHandlers ev;
 
-		public override void OnDisable() { }
+		public static string ConfigFolerFilePath;
+		public static string WatchlistFilePath;
 
 		public override void OnEnable()
 		{
-			if (!Directory.Exists(ConfigFolerFilePath))
+			try
 			{
-				Directory.CreateDirectory(ConfigFolerFilePath);
-			}
-			if (!File.Exists(WatchlistFilePath))
+				string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+				string pluginPath = Path.Combine(appData, "Plugins");
+				string path = Path.Combine(pluginPath, "Watchlist");
+				ConfigFolerFilePath = path;
+				WatchlistFilePath = Path.Combine(path, "watchlist.json");
+				if (!Directory.Exists(ConfigFolerFilePath))
+				{
+					Directory.CreateDirectory(ConfigFolerFilePath);
+				}
+				if (!File.Exists(WatchlistFilePath))
+				{
+					File.WriteAllText(WatchlistFilePath, "{}");
+				}
+			} catch (Exception x)
 			{
-				File.Create(WatchlistFilePath);
-				File.WriteAllText(WatchlistFilePath, "{}");
+				Log.Error($"Error creating file: {x.Message}");
 			}
-			if (!Directory.Exists(ReportBanFolder))
-			{
-				Directory.CreateDirectory(ReportBanFolder);
-			}
+
+			//EventHandlers
+			ev = new EventHandlers();
+			Events.PlayerBanEvent += ev.OnPlayerBan;
+			Events.RemoteAdminCommandEvent += ev.OnRACommand;
+			Events.ConsoleCommandEvent += ev.OnConsoleCommand;
 		}
 
-		public override void Register()
+		public override void OnDisable()
 		{
-			AddEventHandlers(new EventHandler(this));
-			AddCommand("wreconnect", new ReconnectCommand(this));
-			AddCommand("wban", new BanCommand());
-			AddCommand("wunban", new UnbanCommand());
+			Events.PlayerBanEvent -= ev.OnPlayerBan;
+			Events.RemoteAdminCommandEvent -= ev.OnRACommand;
+			Events.ConsoleCommandEvent -= ev.OnConsoleCommand;
+			ev = null;
 		}
+
+		public override void OnReload() { }
+
+		public override string getName { get; } = "Watchlist";
 	}
 }
