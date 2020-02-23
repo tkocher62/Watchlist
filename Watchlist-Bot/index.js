@@ -191,7 +191,7 @@ async function performUpdate () {
 					}
 				}
 				if (statistics.playerList.length == 0 && servers[i].presenting == 2) continue; //Don't send requests when we don't need to
-				for (x in statistics.playerList) if (watchlistData[statistics.playerList[x].id] != null) statistics.playerList[x].watchList = watchlistData[statistics.playerList[x].id];
+				for (x in statistics.playerList) if (watchlistData[statistics.playerList[x].steamid] != null) statistics.playerList[x].watchList = watchlistData[statistics.playerList[x].steamid];
 				var embed = embedBuilder(servers[i], statistics.playerList.length, statistics.playerList);
 				var channel = bot.channels.get(servers[i].targetChannelID);
 				channel.customId = servers[i].id;
@@ -218,7 +218,7 @@ async function performUpdate () {
 						"footer": {"text": "Watchlist by Cyanox & Mitzey"},
 						"author": {"name": name + " Status | Offline"},
 						"description": "The plugin is not attached to the bot, check the status of the server."
-					} 
+					}
 				};
 				var channel = bot.channels.get(servers[i].targetChannelID);
 				channel.customId = servers[i].id;
@@ -274,17 +274,17 @@ async function botMessage (message) {
             message.channel.send("SteamID64 for user is `" + await GetSteamID(message.content.concat("?xml=1")) + "`.");
         }
     }
-	
+
 	if (message.channel.id != config.watchlistChannel) return;
-	
+
 	// To lower case to prevent being case sensitive
     var cmd = message.content.toLowerCase();
-	
+
 	if (cmd == "$reload") {
 		await message.channel.send("Reloading Discord Integration..");
 		restartBot();
 	}
-	
+
     // The add command
     else if (cmd.startsWith(config.discordBotPrefix + "add")) {
         // Split the data by forward slashes
@@ -360,7 +360,7 @@ async function botMessage (message) {
 			message.channel.send("Player is already banned from Reports.");
 		}
 	}
-}  
+}
 
 bot.on("message", botMessage);
 
@@ -400,7 +400,7 @@ function createReactionReport (server, user, reason) {
 	report.destroyed = false;
 	report.server = server;
 	report.accepted = false;
-	
+
 	report.handle = function (messageReaction, user) {
 		if (user.id != bot.user.id) {
 			if (messageReaction.emoji.name == "✅") {
@@ -412,14 +412,14 @@ function createReactionReport (server, user, reason) {
 			}
 		}
 	}
-	
+
 	report.accept = function () {
 		if (this.accepted == true) return;
 		this.accepted = true;
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 	}
-	
+
 	report.ban = function () {
 		reportBans[this.user.id] = true;
 		fs.writeFile(reportBansJSON, JSON.stringify(reportBans, null, 4), err => {
@@ -430,7 +430,7 @@ function createReactionReport (server, user, reason) {
 		this.destroy();
 		for (i in activeReactions) if (activeReactions[i].user.id == this.user.id && activeReactions[i].destroyed == false) activeReactions[i].destroy();
 	}
-	
+
 	report.destroy = function () {
 		this.destroyed = true;
 		var id = this.messageID;
@@ -441,7 +441,7 @@ function createReactionReport (server, user, reason) {
 		}
 		delete activeReactions[id];
 	}
-	
+
 	var embed = new Discord.RichEmbed()
 		.setColor('#ffff00')
 		.setAuthor(guild.name + ' Report', guild.iconURL)
@@ -450,7 +450,7 @@ function createReactionReport (server, user, reason) {
 		.addField('Report', reason)
 		.setTimestamp()
 		.setFooter('Watchlist by Cyanox & Mitzey');
-		
+
 	bot.channels.get(config.reportsChannel).send(embed).then(function (message) {
 		this.messageID = message.id;
 		activeReactions[message.id] = report;
@@ -525,14 +525,14 @@ tcpServer.on("connection", async function(socket) {
     socket.setEncoding("utf8");
 	socket.authed = null;
     console.log("Got Connection, Waiting for ID..");
-	
+
 	//Timeout anything that doesn't identifiy themselves
 	socket.timeout = setTimeout(function () {
 		this.timeout = null;
 		console.log("Client Timed out");
 		this.destroy();
 	}.bind(socket), 2500);
-	
+
 	//Handle disconnects
 	socket.on("close", function () {
 		if (this.timeout != null) clearTimeout(this.timeout);
@@ -547,7 +547,7 @@ tcpServer.on("connection", async function(socket) {
 			console.log("Connection Closed");
 		}
 	});
-	
+
 	//Error handling
 	socket.on("error", function (e) {
 		if (e.code != "ECONNRESET") console.log("Client Error!\n"+e);
