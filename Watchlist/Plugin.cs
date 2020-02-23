@@ -35,14 +35,14 @@ namespace Watchlist
 
 			//EventHandlers
 			ev = new EventHandlers();
-			Events.PlayerBanEvent += ev.OnPlayerBan;
+			Events.PlayerBannedEvent += ev.OnPlayerBanned;
 			Events.RemoteAdminCommandEvent += ev.OnRACommand;
 			Events.ConsoleCommandEvent += ev.OnConsoleCommand;
 		}
 
 		public override void OnDisable()
 		{
-			Events.PlayerBanEvent -= ev.OnPlayerBan;
+			Events.PlayerBannedEvent -= ev.OnPlayerBanned;
 			Events.RemoteAdminCommandEvent -= ev.OnRACommand;
 			Events.ConsoleCommandEvent -= ev.OnConsoleCommand;
 			ev = null;

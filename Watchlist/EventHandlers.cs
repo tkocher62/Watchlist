@@ -86,7 +86,8 @@ namespace Watchlist
 						if (resp == 1) player.Broadcast(3, "<i>Your report has been read by a staff member.</i>");
 						else if (resp == 0) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Report sent to the staff team.", "green");
 						else if (resp == -1) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Reports are currently disabled.", "yellow");
-						else if (resp == -2 || resp == -3) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "You have been banned from using the report system.", "red");
+						else if (resp == -2) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "You have been banned from using the report system.", "red");
+						else if (resp == -3) player.Broadcast(3, "<i>You have been banned from using the report system.</i>");
 					}
 					else if (type == "LOOKUP")
 					{
@@ -140,9 +141,9 @@ namespace Watchlist
 			}
 		}
 
-		public void OnPlayerBan(PlayerBanEvent ev)
+		public void OnPlayerBanned(PlayerBannedEvent ev)
 		{
-			Log.Info("name: " + ev.BannedPlayer.nicknameSync.Network_myNickSync);
+			//ev.Details
 		}
 
 		public void OnRACommand(ref RACommandEvent ev)
