@@ -1,0 +1,44 @@
+//When the SCP plugin wants to push a report from the game to the discord bot, this is the format that the discord bot expects over the TCP connection.
+{
+	"type": "REPORT",
+	"sender": {"name": "NAMEHERE", "id": "672354876325478223"},
+	"report": "Someone is saying the n-word"
+}
+
+//When the bot posts a report on a discord channel, it will wait for the message to be reacted
+//Once a report is reacted, the discord bot will send back this response asking the server to tell that user that their message was read.
+//Alternatively moderators can just dismiss some reports as well using a special reaction
+{
+	"type": "REPORT",
+	"sendto": "672354876325478223"
+}
+
+//Bot will respond with an extra parameter known as 'resp'. The following are the possible values for it
+//1 = the report was read/approved
+//0 = the report was sent
+//-1 = reports are disabled
+//-2 user is banned
+//No err parameter means the report was acknowledged and someone is on their way
+{
+	"type": "REPORT",
+	"sendto": "672354876325478223",
+	"resp": 1
+}
+//OR
+{
+	"type": "REPORT",
+	"sendto": "672354876325478223",
+	"resp": -1
+}
+//OR
+{
+	"type": "REPORT",
+	"sendto": "672354876325478223",
+	"resp": -2
+}
+//OR
+{
+	"type": "REPORT",
+	"sendto": "672354876325478223",
+	"resp": -3
+}

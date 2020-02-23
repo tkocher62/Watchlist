@@ -1,0 +1,15 @@
+//This is the update request that the bot will send to the SCP plugin over the TCP connection
+{
+	"type": "UPDATE"
+}
+
+
+//This is the response that the bot will expect to receive from the SCP plugin via TCP within 7000ms. Any later an the bot will timeout and consider the connection dead and disconnect.
+{
+	"type": "UPDATE",
+	"playerList": [
+		{"name" : "Mitzey", "steamid": "27846389724623632"},
+		{"name" : "Example", "steamid": "212896875928238838"}
+	]
+}
+

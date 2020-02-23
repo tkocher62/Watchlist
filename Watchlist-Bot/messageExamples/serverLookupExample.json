@@ -1,0 +1,17 @@
+//Example request from the server
+{
+	"type": "LOOKUP"
+	"sender": "324856729834782354"
+	"target": "823472389479823743"
+}
+
+//Example response from the bot
+{
+	"type": "LOOKUP"
+	"sender": "324856729834782354"
+	"report": {
+        "discipline": "1 hour",
+        "reason": "n-word while thinking that a mod wasn't watching in-game",
+        "staff": "Mitzey"
+    }	
+}

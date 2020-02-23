@@ -1,0 +1,21 @@
+//When the SCP server plugin tries to connect to the TCP socket on the bot, it must identify itself within 5000ms, else it will be timed out.
+//This is the IDENT message that the discord bot is looking for once a connection is established. It should contain the server ID that matches the ID in your config file.
+{
+	"type": "IDENT",
+	"data": "7778", //data should be the same thing as the "id" tag in the config file for a server entry
+	"maxUsers" : 32 //optional but would be a good idea to provide
+}
+
+//Once you send this IDENT, the server will send either response below:
+{
+	"type": "IDENT",
+	"data": "PASS"
+}
+
+//Failure below. On failure the connection is terminated.
+{
+	"type": "IDENT",
+	"data": "FAIL"
+}
+
+//Note that only one socket can be registered for a server at a time!

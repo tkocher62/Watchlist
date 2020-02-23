@@ -1,0 +1,19 @@
+{
+  "name": "watchlist-bot",
+  "version": "0.0.1",
+  "publishConfig": { "registry": "https://npm.pkg.github.com/" },
+  "description": "A bot designed specifically for a EXILED SCP SL Server to assist with moderation using watchlist",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "author": "Mitzey",
+  "license": "ISC",
+  "dependencies": {
+    "bent": "^7.0.6",
+    "discord.js": "^11.5.1",
+    "xml2js": "^0.4.23",
+    "xmldom": "^0.2.1"
+  },
+  "devDependencies": {}
+}
