@@ -33,12 +33,15 @@ namespace Watchlist
 				else if (type == "REPORT" && o["resp"] != null)
 				{
 					ReferenceHub player = Player.GetPlayer($"{(string)o["sendto"]}@steam");
-					int resp = (int)o["resp"];
-					if (resp == 1) player.Broadcast(3, "<i>Your report has been read by a staff member.</i>");
-					else if (resp == 0) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Report sent to the staff team.", "green");
-					else if (resp == -1) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Reports are currently disabled.", "yellow");
-					else if (resp == -2) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "You have been banned from using the report system.", "red");
-					else if (resp == -3) player.Broadcast(3, "<i>You have been banned from using the report system.</i>");
+					if (player != null)
+					{
+						int resp = (int)o["resp"];
+						if (resp == 1) player.Broadcast(3, "<i>Your report has been read by a staff member.</i>");
+						else if (resp == 0) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Report sent to the staff team.", "green");
+						else if (resp == -1) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Reports are currently disabled.", "yellow");
+						else if (resp == -2) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "You have been banned from using the report system.", "red");
+						else if (resp == -3) player.Broadcast(3, "<i>You have been banned from using the report system.</i>");
+					}
 				}
 				else if (type == "LOOKUP")
 				{
