@@ -42,7 +42,7 @@ namespace Watchlist
 					socket.Connect("127.0.0.1", 9090);
 
 					new Thread(Listen).Start();
-					socket.Send(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new Identify())));
+					SendData(new Identify());
 				} catch (Exception x)
 				{
 					// Failed to connect
@@ -70,15 +70,14 @@ namespace Watchlist
 					}
 					else if (type == "UPDATE")
 					{
-						Log.Warn("updating");
-						socket.Send(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new Update()
+						SendData(new Update()
 						{
 							playerList = Player.GetHubs().Where(x => x.characterClassManager.UserId != null).Select(x => new User()
 							{
 								name = x.nicknameSync.Network_myNickSync,
 								steamid = x.characterClassManager.UserId.Replace("@steam", "")//.Replace("@discord", "")
 							}).ToArray()
-						})));
+						});
 					}
 					else if (type == "REPORT" && o["resp"] != null)
 					{
@@ -89,12 +88,40 @@ namespace Watchlist
 						else if (resp == -1) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "Reports are currently disabled.", "yellow");
 						else if (resp == -2 || resp == -3) player.GetComponent<GameConsoleTransmission>().SendToClient(player.scp079PlayerScript.connectionToClient, "You have been banned from using the report system.", "red");
 					}
+					else if (type == "LOOKUP")
+					{
+						ReferenceHub player = Player.GetPlayer($"{(string)o["sender"]}@steam");
+						if (o["report"] != null)
+						{
+							player.queryProcessor.TargetReply(player.scp079PlayerScript.connectionToClient,
+								$"Watchlist#Watchlist Player Lookup\n" +
+									$"Player - {player.nicknameSync.Network_myNickSync} ({player.characterClassManager.UserId})\n" +
+									$"Discipline - {o["report"]["discipline"]}\n" +
+									$"Reason - {o["report"]["reason"]}\n" +
+									$"Staff Member - {o["report"]["staff"]}",
+								true, true, string.Empty);
+						}
+						else
+						{
+							player.queryProcessor.TargetReply(player.scp079PlayerScript.connectionToClient, "Watchlist#Player not found in watchlist.", false, true, string.Empty);
+						}
+					}
 				} catch (Exception x)
 				{
 					Log.Error("Watchlist listener error: " + x.Message);
 				}
 			}
 			new Thread(AttemptConnection).Start();
+		}
+
+		private void SendData(object data)
+		{
+			socket.Send(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(data)));
+		}
+
+		private void SendData(byte[] data)
+		{
+			socket.Send(data);
 		}
 
 		public static bool IsConnected()
@@ -121,7 +148,6 @@ namespace Watchlist
 		public void OnRACommand(ref RACommandEvent ev)
 		{
 			string cmd = ev.Command.ToLower();
-			Log.Info(ev.Command);
 			ReferenceHub pSender = Player.GetPlayer(ev.Sender.SenderId);
 			if (cmd.StartsWith("lookup") && pSender.serverRoles.RemoteAdmin)
 			{
@@ -140,19 +166,11 @@ namespace Watchlist
 					}
 					if (player != null)
 					{
-						JObject o = JObject.Parse(File.ReadAllText(Plugin.WatchlistFilePath));
-						if (o.ContainsKey(player.characterClassManager.UserId))
+						SendData(new Lookup
 						{
-							ev.Sender.RAMessage($"Watchlist Player Lookup\n" +
-											   $"Player - {player.nicknameSync.Network_myNickSync} ({player.characterClassManager.UserId})\n" +
-											   $"Discipline - {o[player.characterClassManager.UserId]["discipline"]}\n" +
-											   $"Reason - {o[player.characterClassManager.UserId]["reason"]}\n" +
-											   $"Staff Member - {o[player.characterClassManager.UserId]["staff"]}", true);
-						}
-						else
-						{
-							ev.Sender.RAMessage($"Player '{player.nicknameSync.Network_myNickSync}' not found in watchlist.", false);
-						}
+							sender = Player.GetPlayer(ev.Sender.SenderId).characterClassManager.UserId.Replace("@steam", ""),
+							target = player.characterClassManager.UserId.Replace("@steam", "")
+						});
 					}
 					else
 					{
@@ -186,7 +204,7 @@ namespace Watchlist
 
 				if (msg.Length > 0)
 				{
-					socket.Send(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(report)));
+					SendData(report);
 					ev.ReturnMessage = "Sending report...";
 					ev.Color = "yellow";
 				}
