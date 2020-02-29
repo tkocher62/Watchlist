@@ -14,7 +14,6 @@ var reportBans;
 if (!fs.existsSync(watchlistJSON)) fs.writeFileSync(watchlistJSON, "{}");
 if (!fs.existsSync(reportBansJSON)) fs.writeFileSync(reportBansJSON, "{}");
 
-
 //Read watchlist
 try {
 	watchlistData = JSON.parse(fs.readFileSync(watchlistJSON));
@@ -280,7 +279,7 @@ async function botMessage (message) {
 	// To lower case to prevent being case sensitive
     var cmd = message.content.toLowerCase();
 
-	if (cmd == "$reload") {
+	if (cmd == (config.discordBotPrefix + "reload")) {
 		await message.channel.send("Reloading Discord Integration..");
 		restartBot();
 	}
@@ -418,6 +417,7 @@ function createReactionReport (server, user, reason) {
 		this.accepted = true;
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
+		this.destroy();
 	}
 
 	report.ban = function () {
@@ -425,7 +425,7 @@ function createReactionReport (server, user, reason) {
 		fs.writeFile(reportBansJSON, JSON.stringify(reportBans, null, 4), err => {
 			if (err) throw err;
 		});
-		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.err = -3; o = JSON.stringify(o);
+		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = -3; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 		this.destroy();
 		for (i in activeReactions) if (activeReactions[i].user.id == this.user.id && activeReactions[i].destroyed == false) activeReactions[i].destroy();
@@ -444,7 +444,7 @@ function createReactionReport (server, user, reason) {
 
 	var embed = new Discord.RichEmbed()
 		.setColor('#ffff00')
-		.setAuthor(guild.name + ' Report', guild.iconURL)
+		.setAuthor(guild.name + ' Report - ' + (server.name || server.id), guild.iconURL)
 		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
 		.addField('Sender', "[" + user.name + " (" + user.id + ")](https://steamcommunity.com/profiles/" + user.id + ")")
 		.addField('Report', reason)
