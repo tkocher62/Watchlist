@@ -1,6 +1,4 @@
 ﻿using EXILED;
-using System;
-using System.IO;
 
 namespace Watchlist
 {

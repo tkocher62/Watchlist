@@ -64,7 +64,7 @@ namespace Watchlist
 			string cmd = ev.Command.ToLower();
 			if (cmd.StartsWith("report"))
 			{
-				string msg = cmd.Replace("report", "").Trim();
+				string msg = cmd.Substring(cmd.IndexOf("report") + 7).Trim();
 
 				Report report = new Report
 				{
