@@ -1,4 +1,5 @@
 const Discord = require("discord.js");
+const { Console } = require('console');
 const fs = require("fs");
 const configFile = "./data/config.json";
 const bent = require('bent')
@@ -10,6 +11,14 @@ const reportBansJSON = "./data/reportBans.json";
 let config;
 var watchlistData;
 var reportBans;
+
+//Debugging don't mind me
+const PassThrough = require('stream').PassThrough;
+const b = new PassThrough();
+const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
+b.pipe(process.stdout);
+b.pipe(output);
+const console = new Console({ stdout: b, stderr: b });
 
 if (!fs.existsSync(watchlistJSON)) fs.writeFileSync(watchlistJSON, "{}");
 if (!fs.existsSync(reportBansJSON)) fs.writeFileSync(reportBansJSON, "{}");
@@ -396,6 +405,7 @@ function createReactionReport (server, user, reason) {
 	var guild = bot.channels.get(config.reportsChannel).guild;
 	var report = {};
 	report.user = user;
+	report.user.id = report.user.steamid;
 	report.destroyed = false;
 	report.server = server;
 	report.accepted = false;
@@ -591,8 +601,24 @@ function handleTCPMessage (data) {
 			servers[this.authed].serverQuerryComp(data, servers[this.authed]);
 		} else if (data.type == "REPORT") {
 			var resp = createReactionReport(servers[this.authed], data.sender, data.report);
-			var o = {}; o.type = "REPORT"; o.sendto = data.sender.id; o.resp = resp; o = JSON.stringify(o);
+			var o = {}; o.type = "REPORT"; o.sendto = data.sender.steamid; o.resp = resp; o = JSON.stringify(o);
 			this.write(o);
+		} else if (data.type == "BAN") {
+			data.user.name
+			data.user.steamid
+			data.issuer.name
+			data.issuer.steamid
+			data.user
+			data.issuer
+			data.time
+			//data.time == 0 for kicks
+		} else if (data.type == "MUTE") {
+			data.user.name
+			data.user.steamid
+			data.issuer.name
+			data.issuer.steamid
+			data.user
+			data.issuer
 		}
 	}
 }
@@ -607,9 +633,13 @@ tcpServer.on("error", async function(e) {
     process.exit(1);
 });
 
-/* Debugging to catch any errors I need to find and patch
+// Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
+
   console.log('Caught exception: ' + err.stack);
   process.exit(1);
 });
-*/
+
+process.on('unhandledRejection', function (err) {
+	console.log('Caught promise rejection: ' + err.stack);
+});
