@@ -401,11 +401,10 @@ async function flushReports (channel) {
 
 function createReactionReport (server, user, reason) {
 	if (servers.reports != true) return -1; //Reports are disabled, -1
-	if (reportBans[user.id] == true) return -2; //User is banned, -2
+	if (reportBans[user.steamid] == true) return -2; //User is banned, -2
 	var guild = bot.channels.get(config.reportsChannel).guild;
 	var report = {};
 	report.user = user;
-	report.user.id = report.user.steamid;
 	report.destroyed = false;
 	report.server = server;
 	report.accepted = false;
@@ -425,20 +424,20 @@ function createReactionReport (server, user, reason) {
 	report.accept = function () {
 		if (this.accepted == true) return;
 		this.accepted = true;
-		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = 1; o = JSON.stringify(o);
+		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 		this.destroy();
 	}
 
 	report.ban = function () {
-		reportBans[this.user.id] = true;
+		reportBans[this.user.steamid] = true;
 		fs.writeFile(reportBansJSON, JSON.stringify(reportBans, null, 4), err => {
 			if (err) throw err;
 		});
-		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = -3; o = JSON.stringify(o);
+		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = -3; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 		this.destroy();
-		for (i in activeReactions) if (activeReactions[i].user.id == this.user.id && activeReactions[i].destroyed == false) activeReactions[i].destroy();
+		for (i in activeReactions) if (activeReactions[i].user.steamid == this.user.steamid && activeReactions[i].destroyed == false) activeReactions[i].destroy();
 	}
 
 	report.destroy = function () {
@@ -456,7 +455,7 @@ function createReactionReport (server, user, reason) {
 		.setColor('#ffff00')
 		.setAuthor(guild.name + ' Report - ' + (server.name || server.id), guild.iconURL)
 		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
-		.addField('Sender', "[" + user.name + " (" + user.id + ")](https://steamcommunity.com/profiles/" + user.id + ")")
+		.addField('Sender', "[" + user.name + " (" + report.user.steamid + ")](https://steamcommunity.com/profiles/" + report.user.steamid + ")")
 		.addField('Report', reason)
 		.setTimestamp()
 		.setFooter('Watchlist by Cyanox & Mitzey');
