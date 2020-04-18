@@ -14,11 +14,6 @@ namespace Watchlist
 			tcp.Init();
 		}
 
-		public void OnPlayerBanned(PlayerBannedEvent ev)
-		{
-			//ev.Details
-		}
-
 		public void OnRACommand(ref RACommandEvent ev)
 		{
 			string cmd = ev.Command.ToLower();
@@ -57,6 +52,58 @@ namespace Watchlist
 					return;
 				}
 			}
+			else if (cmd.StartsWith("ban"))
+			{
+				string[] split = cmd.Replace("ban", "").Split('.');
+
+				if (int.TryParse(split[0].Trim(), out int pid))
+				{
+					ReferenceHub player = Player.GetPlayer(pid);
+
+					if (int.TryParse(split[1].Trim(), out int t))
+					{
+						if (t == 0)
+						{
+							tcp.SendData(new Ban()
+							{
+								type = "KICK",
+								time = "0",
+								issuer = HubToUser(pSender),
+								user = HubToUser(player)
+							});
+						}
+						else
+						{
+							int depth = 0;
+							while (t > 1)
+							{
+								t /= div[depth];
+								if (t > 1) depth++;
+							}
+
+							tcp.SendData(new Ban()
+							{
+								time = t + suffix[depth],
+								issuer = HubToUser(pSender),
+								user = HubToUser(player)
+							});
+						}
+					}
+				}
+			}
+			else if (cmd.StartsWith("mute"))
+			{
+				if (int.TryParse(cmd.Replace("mute", "").Replace(".", "").Trim(), out int pid))
+				{
+					ReferenceHub player = Player.GetPlayer(pid);
+
+					tcp.SendData(new Mute()
+					{
+						issuer = HubToUser(pSender),
+						user = HubToUser(player)
+					});
+				}
+			}
 		}
 
 		public void OnConsoleCommand(ConsoleCommandEvent ev)
@@ -68,11 +115,7 @@ namespace Watchlist
 
 				Report report = new Report
 				{
-					sender = new Sender
-					{
-						name = ev.Player.nicknameSync.Network_myNickSync,
-						id = ev.Player.characterClassManager.UserId.Replace("@steam", "")
-					},
+					sender = HubToUser(ev.Player),
 					report = msg
 				};
 
