@@ -70,10 +70,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandHandler.cs" />
+    <Compile Include="DataObjects\Ban.cs" />
     <Compile Include="DataObjects\Lookup.cs" />
+    <Compile Include="DataObjects\Mute.cs" />
     <Compile Include="DataObjects\Update.cs" />
+    <Compile Include="DataObjects\User.cs" />
     <Compile Include="EventHandlers.cs" />
     <Compile Include="DataObjects\Identify.cs" />
+    <Compile Include="Methods.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DataObjects\Report.cs" />
