@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
+const { Console } = require('console');
 const fs = require("fs");
 const configFile = "./data/config.json";
+const staffListJSON = "./data/staffSync.json";
 const bent = require('bent')
 const getJSON = bent('json')
 const parser = (new (require('xml2js').Parser)).parseStringPromise;
@@ -10,9 +12,21 @@ const reportBansJSON = "./data/reportBans.json";
 let config;
 var watchlistData;
 var reportBans;
+var staffList;
+
+//Staff list example: var stafflist = {steamid: discordid};
+
+//Debugging don't mind me
+const PassThrough = require('stream').PassThrough;
+const b = new PassThrough();
+const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
+b.pipe(process.stdout);
+b.pipe(output);
+const console = new Console({ stdout: b, stderr: b });
 
 if (!fs.existsSync(watchlistJSON)) fs.writeFileSync(watchlistJSON, "{}");
 if (!fs.existsSync(reportBansJSON)) fs.writeFileSync(reportBansJSON, "{}");
+if (!fs.existsSync(staffListJSON)) fs.writeFileSync(staffListJSON, "{}");
 
 //Read watchlist
 try {
@@ -30,6 +44,12 @@ try {
 	process.exit(1);
 }
 
+try {
+	staffList = JSON.parse(fs.readFileSync(staffListJSON));
+} catch (e) {
+	console.log("Error in staffList JSON file, please check the file.\n"+e);
+	process.exit(1);
+}
 
 //Config file loading and checking here
 if (fs.existsSync(configFile)) {
@@ -47,6 +67,7 @@ if (fs.existsSync(configFile)) {
 	if (config.updateInterval == null) {console.log("Config missing Interval Speed in Configs!"); err = 1;}
 	if (config.discordBotPrefix == "" || config.discordBotPrefix == null) {console.log("Missing Discord Bot Prefix in Configs!"); err = 1;}
 	if (config.tcpPort == null) {console.log("Missing TCP Port in Configs!"); err = 1;}
+	if (config.reasonTimeout == null || config.reasonTimeout == "") {console.log("Missing Reason Request Timeout in Configs!"); err = 1;}
 	if (config.watchlistChannel == null || config.watchlistChannel == "") {console.log("Missing Watchlist Command Channel in Configs!"); err = 1;}
 	if (config.reports == true && (config.reportsChannel == null || config.reportsChannel == "")) {console.log("Missing Reports Channel in Configs!"); err = 1;}
 	for (i in config.servers) {
@@ -271,7 +292,9 @@ async function botMessage (message) {
     if (message.channel.type == "dm") {
         if (message.content.includes("https://steamcommunity.com/id") || message.content.includes("https://steamcommunity.com/profiles")) {
             message.channel.send("SteamID64 for user is `" + await GetSteamID(message.content.concat("?xml=1")) + "`.");
-        }
+        } else if (reasonRequests[message.author.id] != null) {
+					reasonRequests[message.author.id].handleMess(message);
+				}
     }
 
 	if (message.channel.id != config.watchlistChannel) return;
@@ -317,7 +340,7 @@ async function botMessage (message) {
                 .addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
                 .addField('Discipline', data.discipline, true)
                 .addField('Staff Member', data.staff, true)
-				.addField('Reason', data.reason)
+								.addField('Reason', data.reason)
                 .setTimestamp()
                 .setFooter('Watchlist by Cyanox & Mitzey'));
         } else {
@@ -367,6 +390,7 @@ var activeReactions = {};
 
 function onReaction (messageReaction, user) {
 	if (activeReactions[messageReaction.message.id]) activeReactions[messageReaction.message.id].handle(messageReaction, user);
+	if (reasonRequests[user.id]) reasonRequests[user.id].handle(messageReaction, user);
 }
 
 bot.on("messageReactionAdd", onReaction);
@@ -376,6 +400,14 @@ function onMessageDelete (message) {
 }
 
 bot.on("messageDelete", onMessageDelete);
+
+bot.on("messageUpdate", onMessageUpdate)
+
+function onMessageUpdate (old, newm) {
+	if (reasonRequests[newm.author.id]) {
+		if (reasonRequests[newm.author.id].lastWatch == old.id) reasonRequests[newm.author.id].handleMess(newm);
+	}
+}
 
 function onBotError (e) {
 	console.log("Discord bot error!\n"+e);
@@ -392,7 +424,7 @@ async function flushReports (channel) {
 
 function createReactionReport (server, user, reason) {
 	if (servers.reports != true) return -1; //Reports are disabled, -1
-	if (reportBans[user.id] == true) return -2; //User is banned, -2
+	if (reportBans[user.steamid] == true) return -2; //User is banned, -2
 	var guild = bot.channels.get(config.reportsChannel).guild;
 	var report = {};
 	report.user = user;
@@ -415,20 +447,20 @@ function createReactionReport (server, user, reason) {
 	report.accept = function () {
 		if (this.accepted == true) return;
 		this.accepted = true;
-		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = 1; o = JSON.stringify(o);
+		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 		this.destroy();
 	}
 
 	report.ban = function () {
-		reportBans[this.user.id] = true;
+		reportBans[this.user.steamid] = true;
 		fs.writeFile(reportBansJSON, JSON.stringify(reportBans, null, 4), err => {
 			if (err) throw err;
 		});
-		var o = {}; o.type = "REPORT"; o.sendto = this.user.id; o.resp = -3; o = JSON.stringify(o);
+		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = -3; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
 		this.destroy();
-		for (i in activeReactions) if (activeReactions[i].user.id == this.user.id && activeReactions[i].destroyed == false) activeReactions[i].destroy();
+		for (i in activeReactions) if (activeReactions[i].user.steamid == this.user.steamid && activeReactions[i].destroyed == false) activeReactions[i].destroy();
 	}
 
 	report.destroy = function () {
@@ -446,7 +478,7 @@ function createReactionReport (server, user, reason) {
 		.setColor('#ffff00')
 		.setAuthor(guild.name + ' Report - ' + (server.name || server.id), guild.iconURL)
 		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
-		.addField('Sender', "[" + user.name + " (" + user.id + ")](https://steamcommunity.com/profiles/" + user.id + ")")
+		.addField('Sender', "[" + user.name + " (" + report.user.steamid + ")](https://steamcommunity.com/profiles/" + report.user.steamid + ")")
 		.addField('Report', reason)
 		.setTimestamp()
 		.setFooter('Watchlist by Cyanox & Mitzey');
@@ -461,6 +493,230 @@ function createReactionReport (server, user, reason) {
 	return 0;
 }
 
+var reasonRequests = {};
+
+function len (o) {
+	var count = 0;
+	for (i in o) count++;
+	return count;
+}
+
+function initReasonRequestUser (id) {
+	var o = {};
+	o.userID = id;
+	o.requests = [];
+
+	o.timeout = function () {
+		if (this.stop) return;
+		if (this.requests.length > 0) {
+			var t = this.requests.shift();
+			t.destroy();
+			this.updateReqs();
+		} else {
+			this.destroy();
+			delete reasonRequests[o.userID];
+		}
+		this.reset();
+	}.bind(o);
+
+	o.timer = setTimeout(o.timeout, config.reasonTimeout*1000);
+
+	o.reset = function () {
+		if (this.stop) return;
+		clearTimeout(this.timer);
+		this.timer = setTimeout(this.timeout, config.reasonTimeout*1000);
+	}.bind(o);
+
+	o.updateReqs = function () {
+		if (this.requests.length == 0 && this.stop != true) return this.destroy();
+		for (i in this.requests) {
+			if (i == 0) continue;
+			var r = this.requests[i];
+			if (r.active) {
+				r.active = false;
+				r.update();
+			}
+			if (r.message == null) this.requests[i].update();
+		}
+		if (this.requests[0] != null) {
+			this.requests[0].active = true;
+			this.requests[0].update();
+		}
+	}.bind(o);
+
+	o.handle = function (messageReaction, user) {
+		this.reset();
+		if (this.stop) return;
+		for (i in this.requests) {
+			var r = this.requests[i];
+			if (r.message.id == messageReaction.message.id) {
+				r.handle(messageReaction, user);
+				break;
+			}
+		}
+	}.bind(o);
+
+	o.lastWatch = null;
+
+	o.handleMess = function (message) {
+		if (this.stop) return;
+		this.reset();
+		o.lastWatch = message.id;
+		for (i in this.requests) {
+			var r = this.requests[i];
+			if (r.active) {
+				r.reason = message.content;
+				r.state = 1;
+				r.update();
+				r.message.react("✅").catch((e) => {/*ignore reaction failures*/});
+				break;
+			}
+		}
+	}.bind(o);
+
+	o.deleteReqId = function (id) {
+		if (id == null) return;
+		for (i in this.requests) if (this.requests[i].id == id) this.requests.splice(i, 1);
+	}.bind(o);
+
+	o.destroy = function () {
+		if (this.stop) return;
+		this.stop = true;
+		for (i in this.requests) {
+			this.requests[i].destroy();
+			if (this.requests[i] != null) this.deleteReqId(this.requests[i].id);
+		}
+		clearTimeout(this.timer);
+		delete reasonRequests[this.userID];
+	}.bind(o);
+
+	return o;
+}
+
+var rRtSts = ["Please enter your reason for this ", "Please verify that the following is correct"];
+
+async function generateReasonRequestEmbed (info, reason, user, issuer, active) {
+	var t;
+	if (info.type == "Ban") {
+		if (info.time == 0) t = info.type;
+		else t = info.time + " " + info.type;
+	} else {
+		t = info.type;
+	}
+
+	var color;
+	if (active) color = '#0099ff';
+	else color = '#36393f';
+	var embed = new Discord.RichEmbed()
+		.setColor(color)
+		.setAuthor(info.guild.name + ' Watchlist', info.guild.iconURL)
+		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
+		.addField('Player', "[" + await GetName(user.steamid) + " (" + user.steamid + ")](https://steamcommunity.com/profiles/" + user.steamid + ")")
+		.addField('Discipline',	t, true)
+		.addField('Staff Member', issuer.name, true)
+		.setTimestamp()
+		.setFooter('Watchlist by Cyanox & Mitzey');
+		if (reason) {
+			embed.addField('Reason', reason);
+		}
+		return embed;
+}
+
+function createReasonRequest (user, issuer, info) {
+	var reasonReq = {};
+	reasonReq.info = info;
+	reasonReq.id = (new Date().getTime()).toString() + "-" + user.steamid;
+	reasonReq.user = user;
+	reasonReq.issuer = issuer;
+	reasonReq.state = 0; //0 = waiting for input, 1 = verification
+	reasonReq.active = false;
+	reasonReq.message = null;
+	reasonReq.info.guild = bot.channels.get(config.reportsChannel).guild;
+
+	if (staffList[reasonReq.issuer.steamid] == null) return;
+	reasonReq.discordUser = bot.users.get(staffList[reasonReq.issuer.steamid]);
+
+	if (reasonRequests[reasonReq.discordUser.id] == null) {
+		reasonRequests[reasonReq.discordUser.id] = initReasonRequestUser(reasonReq.discordUser.id);
+	}
+
+	reasonReqAcc = reasonRequests[reasonReq.discordUser.id];
+	reasonReqAcc.requests.push(reasonReq);
+
+	//Reaction Handler
+	reasonReq.handle = function (messageReaction, user) {
+		if (user.id != bot.user.id) {
+			if (messageReaction.emoji.name == "✅") {
+				this.accept();
+			} else if (messageReaction.emoji.name == '🚫') {
+				this.destroy();
+			}
+		}
+	}.bind(reasonReq);
+
+	reasonReq.update = async function () {
+		if (this.message == null) {
+			this.discordUser.send("`Incoming Reason Request`").then(function (message) {
+				message.react("🚫").catch((e) => {/*ignore reaction failures*/});
+				this.message = message
+				this.update();
+			}.bind(this));
+			return;
+		}
+
+		var embed = await generateReasonRequestEmbed(this.info, this.reason, this.user,	this.issuer, this.active);
+		var active = "";
+		var middle = "";
+		if (this.active) active = "[Selected] ";
+		if (this.state == 0) {
+			middle = rRtSts[this.state] + this.info.type;
+		} else {
+			middle = rRtSts[this.state];
+		}
+
+		this.message.edit("`" + active + middle + "`", embed).catch(e => {console.log("Failed Setting Message Edit")});
+
+	}.bind(reasonReq);
+
+	reasonReq.accept = function () {
+		if (reasonReq.state == 1) {
+				//Insert code for submitting the new watchlist
+				reasonRequests[this.discordUser.id].lastWatch = null;
+
+				var discipline;
+				if (this.info.type == "Ban") {
+					if (this.info.time == 0) discipline = this.info.type;
+					else discipline = this.info.time + " " + this.info.type;
+				} else {
+					discipline = this.info.type;
+				}
+				watchlistData[this.user.steamid] = {
+						discipline: discipline,
+						reason: this.reason,
+						staff: this.discordUser.username
+				}
+
+				// Write the change to the json file
+				fs.writeFile(watchlistJSON, JSON.stringify(watchlistData, null, 4), err => {
+						if (err) throw err;
+				});
+
+				this.message.edit("", new Discord.RichEmbed().setTitle(":white_check_mark: Watchlist Entry added")).then(function () {
+					this.destroy(2500);
+				}.bind(this));
+			}
+	}.bind(reasonReq);
+
+	reasonReq.destroy = function (reasonReqAcc, timeout) {
+		this.message.delete(timeout);
+		reasonReqAcc.deleteReqId(this.id);
+		reasonReqAcc.updateReqs();
+	}.bind(reasonReq, reasonReqAcc);
+
+	reasonReqAcc.updateReqs();
+	reasonReqAcc.reset();
+}
+
 //Function to restart the discord bot but maintain all other functionality.
 function restartBot () {
 	console.log("Rebuilding bot..");
@@ -473,6 +729,7 @@ function restartBot () {
 		bot.on("messageReactionAdd", onReaction);
 		bot.on("messageDelete", onMessageDelete);
 		bot.on("error", onBotError);
+		bot.on("messageUpdate", onMessageUpdate)
 		console.log("Connecting to discord...");
 		bot.login(config.botAuthToken);
 	});
@@ -552,7 +809,7 @@ tcpServer.on("connection", async function(socket) {
 	socket.on("error", function (e) {
 		if (e.code != "ECONNRESET") console.log("Client Error!\n"+e);
 		if (this.timeout != null) clearTimeout(this.timeout);
-		if (!this.destroyed) this.destory();
+		if (!this.destroyed) this.destroy();
 	});
 
 	socket.on("data", handleTCPMessage);
@@ -591,8 +848,21 @@ function handleTCPMessage (data) {
 			servers[this.authed].serverQuerryComp(data, servers[this.authed]);
 		} else if (data.type == "REPORT") {
 			var resp = createReactionReport(servers[this.authed], data.sender, data.report);
-			var o = {}; o.type = "REPORT"; o.sendto = data.sender.id; o.resp = resp; o = JSON.stringify(o);
+			var o = {}; o.type = "REPORT"; o.sendto = data.sender.steamid; o.resp = resp; o = JSON.stringify(o);
 			this.write(o);
+		} else if (data.type == "BAN") {
+			var info = {};
+			info.type = "Ban";
+			info.time = data.time;
+			if (info.time == 0) {
+				info.type = "Kick";
+			}
+			createReasonRequest(data.user, data.issuer, info)
+			//data.time == 0 for kicks
+		} else if (data.type == "MUTE") {
+			var info = {};
+			info.type = "Mute";
+			createReasonRequest(data.user, data.issuer, info)
 		}
 	}
 }
@@ -607,9 +877,13 @@ tcpServer.on("error", async function(e) {
     process.exit(1);
 });
 
-/* Debugging to catch any errors I need to find and patch
+// Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
+
   console.log('Caught exception: ' + err.stack);
   process.exit(1);
 });
-*/
+
+process.on('unhandledRejection', function (err) {
+	console.log('Caught promise rejection: ' + err.stack);
+});

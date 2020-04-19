@@ -7,6 +7,7 @@
 	"watchlistChannel": "317741907071598606",
 	"reportsChannel": "680300247934566421",
 	"reports": true,
+	"reasonTimeout": 480,
 	"servers": [
 		{"id": "8989", "targetChannelID": "679458926055522314", "name" : "Server-1"},
 		{"id": "8990", "targetChannelID": "679618874479738910", "name" : "Server-2"}
