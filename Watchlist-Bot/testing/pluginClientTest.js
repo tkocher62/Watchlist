@@ -92,7 +92,6 @@ function triggerPlayerLeave () {
 	unusedPlayers.push(d);
 }
 
-
 function trigger () {
 	if (Math.round(Math.random()*1) >= 0.05) {
 		triggerPlayerJoin();
@@ -104,10 +103,11 @@ function trigger () {
 setInterval(trigger, 5000);
 
 setTimeout(function () {
-	var o = {}; o.type = "REPORT"; o.sender = {name: "TEST", id: "76561198113227169"};
-	o.report = "This is a test"; o = JSON.stringify(o);
+	var i = Math.round(Math.random()*(playerList.length-1));
+	var o = {}; o.type = "BAN"; o.issuer = {name: "Mitzey234", steamid: "76561198040083118"};
+	o.user = playerList[i]; o.time = "0"; o = JSON.stringify(o);
 	tcpConnection.write(o);
-}, 7000);
+}, 3000);
 
 var max = 22;
 
@@ -117,7 +117,7 @@ var int = setInterval(function () {
 },125);
 
 function onBotMessage (data) {
-	try { 
+	try {
 		data = JSON.parse(data);
 	} catch (e) {
 		console.log("Parse Error!\n"+e);
