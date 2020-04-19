@@ -54,19 +54,22 @@ namespace Watchlist
 			}
 			else if (cmd.StartsWith("ban"))
 			{
+				Log.Warn("ban command ran");
 				string[] split = cmd.Replace("ban", "").Split('.');
 
 				if (int.TryParse(split[0].Trim(), out int pid))
 				{
+					Log.Warn("got player");
 					ReferenceHub player = Player.GetPlayer(pid);
 
 					if (int.TryParse(split[1].Trim(), out int t))
 					{
+						Log.Warn("parsed");
 						if (t == 0)
 						{
+							Log.Warn("was kick, sending data");
 							tcp.SendData(new Ban()
 							{
-								type = "KICK",
 								time = "0",
 								issuer = HubToUser(pSender),
 								user = HubToUser(player)
@@ -75,15 +78,17 @@ namespace Watchlist
 						else
 						{
 							int depth = 0;
+							int time = t;
 							while (t > 1)
 							{
+								time = t;
 								t /= div[depth];
 								if (t > 1) depth++;
 							}
 
 							tcp.SendData(new Ban()
 							{
-								time = t + suffix[depth],
+								time = time + suffix[depth],
 								issuer = HubToUser(pSender),
 								user = HubToUser(player)
 							});
