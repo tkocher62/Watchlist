@@ -54,20 +54,16 @@ namespace Watchlist
 			}
 			else if (cmd.StartsWith("ban"))
 			{
-				Log.Warn("ban command ran");
 				string[] split = cmd.Replace("ban", "").Split('.');
 
 				if (int.TryParse(split[0].Trim(), out int pid))
 				{
-					Log.Warn("got player");
 					ReferenceHub player = Player.GetPlayer(pid);
 
 					if (int.TryParse(split[1].Trim(), out int t))
 					{
-						Log.Warn("parsed");
 						if (t == 0)
 						{
-							Log.Warn("was kick, sending data");
 							tcp.SendData(new Ban()
 							{
 								time = "0",
