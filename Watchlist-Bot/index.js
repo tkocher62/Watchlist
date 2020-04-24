@@ -88,7 +88,7 @@ if (fs.existsSync(configFile)) {
 //Create Discord bot object and login
 var bot = new Discord.Client();
 console.log("Connecting to discord...");
-bot.login(config.botAuthToken);
+bot.login(config.botAuthToken).catch(e => {/*ignore*/});
 
 //Object containing active server message information
 var servers = {};
@@ -182,7 +182,7 @@ function botReady () {
 	if (config.reports == true) {
 		var rchannel = bot.channels.get(config.reportsChannel);
 		if (rchannel == null) {
-			console.log("WARNING: Server reports channel not found! Ignoring this server");
+			console.log("WARNING: Server reports channel not found! Disabling reports..");
 			servers.reports = null;
 		} else {
 			flushReports(rchannel);
@@ -328,7 +328,9 @@ async function botMessage (message) {
             message.channel.send("Error: Missing arguments.");
         }
     } else if (cmd.startsWith(config.discordBotPrefix + "lookup")) {
-		var steamid = cmd.split(" ")[1].trim();
+		var split = cmd.split(" ");
+		if (split.length < 2) return;
+		var steamid = split[1].trim();
         // Check if the json file data contains the SteamID64 provided
         if (watchlistData.hasOwnProperty(steamid)) {
             // If so, parse the data and send it in a neat format using Discord Rich Embed
@@ -410,7 +412,7 @@ function onMessageUpdate (old, newm) {
 }
 
 function onBotError (e) {
-	console.log("Discord bot error!\n"+e);
+	console.log("Discord bot error: ", e);
 	restartBot();
 }
 
@@ -731,7 +733,7 @@ function restartBot () {
 		bot.on("error", onBotError);
 		bot.on("messageUpdate", onMessageUpdate)
 		console.log("Connecting to discord...");
-		bot.login(config.botAuthToken);
+		bot.login(config.botAuthToken).catch(e => {/*ignore*/});
 	});
 	activeReactions = {};
 }
@@ -879,8 +881,8 @@ tcpServer.on("error", async function(e) {
 
 // Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
-
-  console.log('Caught exception: ' + err.stack);
+  console.log('Caught process critical exception: ' + err.stack);
+	if (err.code == 'ETIMEDOUT') return restartBot();
   process.exit(1);
 });
 
