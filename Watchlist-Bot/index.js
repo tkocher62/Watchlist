@@ -418,6 +418,13 @@ function onBotError (e) {
 
 bot.on("error", onBotError);
 
+function onShardError (e) {
+	console.error('Websocket connection error:', error);
+	restartBot();
+}
+
+bot.on('shardError', onShardError);
+
 async function flushReports (channel) {
 	var mess = new Discord.RichEmbed().setColor('#0099ff').setTitle('Loading..');
 	var messages = await channel.fetchMessages();
@@ -461,7 +468,7 @@ function createReactionReport (server, user, reason) {
 		});
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = -3; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
-		this.destroy();
+		//this.destroy();
 		for (i in activeReactions) if (activeReactions[i].user.steamid == this.user.steamid && activeReactions[i].destroyed == false) activeReactions[i].destroy();
 	}
 
@@ -732,6 +739,7 @@ function restartBot () {
 		bot.on("messageDelete", onMessageDelete);
 		bot.on("error", onBotError);
 		bot.on("messageUpdate", onMessageUpdate)
+		bot.on('shardError', onShardError);
 		console.log("Connecting to discord...");
 		bot.login(config.botAuthToken).catch(e => {/*ignore*/});
 	});
