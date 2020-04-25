@@ -458,7 +458,7 @@ function createReactionReport (server, user, reason) {
 		this.accepted = true;
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
-		this.destroy();
+		//this.destroy();
 	}
 
 	report.ban = function () {
@@ -468,7 +468,7 @@ function createReactionReport (server, user, reason) {
 		});
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = -3; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
-		//this.destroy();
+		this.destroy();
 		for (i in activeReactions) if (activeReactions[i].user.steamid == this.user.steamid && activeReactions[i].destroyed == false) activeReactions[i].destroy();
 	}
 
