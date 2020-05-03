@@ -384,6 +384,13 @@ async function botMessage (message) {
 			message.channel.send("Player is already banned from Reports.");
 		}
 	}
+	else if (cmd.startsWith(config.discordBotPrefix + "memory")) {
+		var t = process.memoryUsage()
+		var full = "```";
+		for (i in t) full += i + ": " + ( Math.round(t[i] / 1024 / 1024 * 100) / 100 + "MB ");
+		full += "```";
+		message.channel.send(full);
+	}
 }
 
 bot.on("message", botMessage);
@@ -731,6 +738,13 @@ function restartBot () {
 	console.log("Rebuilding bot..");
 	for (x in servers) servers[x].presenting = null;
 	for (i in servers) if (servers[i].message != null) servers[i].message = -1;
+		bot.removeAllListeners("ready");
+		bot.removeAllListeners("message");
+		bot.removeAllListeners("messageReactionAdd");
+		bot.removeAllListeners("messageDelete");
+		bot.removeAllListeners("error");
+		bot.removeAllListeners("messageUpdate")
+		bot.removeAllListeners('shardError');
 	bot.destroy().then(function () {
 		bot = new Discord.Client();
 		bot.on("ready", botReady);
@@ -876,6 +890,17 @@ function handleTCPMessage (data) {
 		}
 	}
 }
+
+function printMemory () {
+	console.log("!!!!Memory Check!!!!");
+	var t = process.memoryUsage()
+	for (i in t) console.log(i, Math.round(t[i] / 1024 / 1024 * 100)/100 + "MB");
+	console.log("!!!!END Memory Check!!!!");
+}
+
+printMemory();
+
+setInterval(printMemory, 60000*60);
 
 //Catch any TCP server Errors
 tcpServer.on("error", async function(e) {
