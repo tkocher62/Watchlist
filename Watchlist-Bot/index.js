@@ -328,23 +328,23 @@ async function botMessage (message) {
             message.channel.send("Error: Missing arguments.");
         }
     } else if (cmd.startsWith(config.discordBotPrefix + "lookup")) {
-		var split = cmd.split(" ");
-		if (split.length < 2) return;
-		var steamid = split[1].trim();
+				var split = cmd.split(" ");
+				if (split.length < 2) return;
+				var steamid = split[1].trim();
         // Check if the json file data contains the SteamID64 provided
         if (watchlistData.hasOwnProperty(steamid)) {
             // If so, parse the data and send it in a neat format using Discord Rich Embed
             var data = watchlistData[steamid];
             message.channel.send(new Discord.RichEmbed()
 	            .setColor('#0099ff')
-                .setAuthor(message.guild.name + ' Watchlist', message.guild.iconURL)
-                .setThumbnail('https://i.imgur.com/NLbIUZk.png')
-                .addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
-                .addField('Discipline', data.discipline, true)
-                .addField('Staff Member', data.staff, true)
-								.addField('Reason', data.reason)
-                .setTimestamp()
-                .setFooter('Watchlist by Cyanox & Mitzey'));
+              .setAuthor(message.guild.name + ' Watchlist', message.guild.iconURL)
+              .setThumbnail('https://i.imgur.com/NLbIUZk.png')
+              .addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
+              .addField('Discipline', data.discipline, true)
+              .addField('Staff Member', data.staff, true)
+							.addField('Reason', data.reason)
+              .setTimestamp()
+              .setFooter('Watchlist by Cyanox & Mitzey'));
         } else {
             message.channel.send("Player not found in watchlist.");
         }
@@ -638,6 +638,21 @@ async function generateReasonRequestEmbed (info, reason, user, issuer, active) {
 		return embed;
 }
 
+async function printWatchlist (steamid) {
+	var data = watchlistData[steamid];
+	var watchlistChannel = bot.channels.get(config.watchlistChannel);
+	watchlistChannel.send(new Discord.RichEmbed()
+		.setColor('#0099ff')
+		.setAuthor(watchlistChannel.guild.name + ' Watchlist', watchlistChannel.guild.iconURL)
+		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
+		.addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
+		.addField('Discipline', data.discipline, true)
+		.addField('Staff Member', data.staff, true)
+		.addField('Reason', data.reason)
+		.setTimestamp()
+		.setFooter('Watchlist by Cyanox & Mitzey'));
+}
+
 function createReasonRequest (user, issuer, info) {
 	var reasonReq = {};
 	reasonReq.info = info;
@@ -649,7 +664,7 @@ function createReasonRequest (user, issuer, info) {
 	reasonReq.message = null;
 	reasonReq.info.guild = bot.channels.get(config.reportsChannel).guild;
 
-	if (staffList[reasonReq.issuer.steamid] == null) return;
+	if (staffList[reasonReq.issuer.steamid] == null) return console.log("Steam ID (" + reasonReq.issuer.steamid + ") not configured, reason request failed.");
 	reasonReq.discordUser = bot.users.get(staffList[reasonReq.issuer.steamid]);
 
 	if (reasonRequests[reasonReq.discordUser.id] == null) {
@@ -717,6 +732,8 @@ function createReasonRequest (user, issuer, info) {
 						if (err) throw err;
 				});
 
+				printWatchlist(this.user.steamid);
+
 				this.message.edit("", new Discord.RichEmbed().setTitle(":white_check_mark: Watchlist Entry added")).then(function () {
 					this.destroy(2500);
 				}.bind(this));
@@ -746,6 +763,7 @@ function restartBot () {
 		bot.removeAllListeners("messageUpdate")
 		bot.removeAllListeners('shardError');
 	bot.destroy().then(function () {
+		delete bot;
 		bot = new Discord.Client();
 		bot.on("ready", botReady);
 		bot.on("message", botMessage);
@@ -916,6 +934,7 @@ tcpServer.on("error", async function(e) {
 process.on('uncaughtException', function(err) {
   console.log('Caught process critical exception: ' + err.stack);
 	if (err.code == 'ETIMEDOUT') return restartBot();
+	if (err.code == 'socket hang up') return restartBot();
   process.exit(1);
 });
 

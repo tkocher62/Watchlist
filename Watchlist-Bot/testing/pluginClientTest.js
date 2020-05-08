@@ -100,7 +100,7 @@ function trigger () {
 	}
 }
 
-setInterval(trigger, 5000);
+setInterval(trigger, 1000);
 
 setTimeout(function () {
 	var i = Math.round(Math.random()*(playerList.length-1));
