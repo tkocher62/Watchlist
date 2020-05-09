@@ -223,6 +223,7 @@ async function performUpdate () {
 					continue;
 				}
 				message.edit(embed).catch((e) => {if (e.code == "ECONNRESET") restartBot()});
+				for (th = message._edits.length-1; th >= 1; th--) delete message._edits.splice(th, 1);
 				if (statistics.playerList.length == 0) {
 					servers[i].presenting = 2; //Server empty present
 				} else {
@@ -250,6 +251,7 @@ async function performUpdate () {
 					continue;
 				}
 				message.edit(embed).catch((e) => {if (e.code == "ECONNRESET") restartBot()});
+				for (th = message._edits.length-1; th >= 1; th--) delete message._edits.splice(th, 1);
 				servers[i].presenting = 0; //Server lost present
 			}
 		}
@@ -706,6 +708,7 @@ function createReasonRequest (user, issuer, info) {
 		}
 
 		this.message.edit("`" + active + middle + "`", embed).catch(e => {console.log("Failed Setting Message Edit")});
+		for (th = this.message._edits.length-1; th >= 1; th--) delete this.message._edits.splice(th, 1);
 
 	}.bind(reasonReq);
 
@@ -737,6 +740,7 @@ function createReasonRequest (user, issuer, info) {
 				this.message.edit("", new Discord.RichEmbed().setTitle(":white_check_mark: Watchlist Entry added")).then(function () {
 					this.destroy(2500);
 				}.bind(this));
+				for (th = this.message._edits.length-1; th >= 1; th-- ) delete this.message._edits.splice(th, 1);
 			}
 	}.bind(reasonReq);
 

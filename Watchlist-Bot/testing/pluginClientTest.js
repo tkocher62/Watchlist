@@ -100,13 +100,13 @@ function trigger () {
 	}
 }
 
-setInterval(trigger, 1000);
+setInterval(trigger, 100);
 
 setTimeout(function () {
 	var i = Math.round(Math.random()*(playerList.length-1));
 	var o = {}; o.type = "BAN"; o.issuer = {name: "Mitzey234", steamid: "76561198040083118"};
 	o.user = playerList[i]; o.time = "0"; o = JSON.stringify(o);
-	tcpConnection.write(o);
+	//tcpConnection.write(o);
 }, 3000);
 
 var max = 22;
