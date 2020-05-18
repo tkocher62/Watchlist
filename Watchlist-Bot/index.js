@@ -17,16 +17,25 @@ var staffList;
 //Staff list example: var stafflist = {steamid: discordid};
 
 //Debugging don't mind me
+const startTime = Date.now()
+const stream = require('stream')
 const PassThrough = require('stream').PassThrough;
 const b = new PassThrough();
 const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
 b.pipe(process.stdout);
 b.pipe(output);
-const console = new Console({ stdout: b, stderr: b });
-
+var liner = new stream.Transform()
+liner.pipe(b);
+liner._transform = function (chunk, encoding, done) {
+     this.push("[" + (Date.now() - startTime)/1000 + "] " + chunk.toString())
+		 done()
+}
+const console = new Console({ stdout: liner, stderr: liner });
+console.log("Start Time: " + startTime);
 if (!fs.existsSync(watchlistJSON)) fs.writeFileSync(watchlistJSON, "{}");
 if (!fs.existsSync(reportBansJSON)) fs.writeFileSync(reportBansJSON, "{}");
 if (!fs.existsSync(staffListJSON)) fs.writeFileSync(staffListJSON, "{}");
+
 
 //Read watchlist
 try {
@@ -94,17 +103,24 @@ bot.login(config.botAuthToken).catch(e => {console.log("Failure connecting to di
 function onDebug (e) {
 	if (e.indexOf("Sending a heartbeat") > -1 || e.indexOf("Heartbeat acknowledged,") > -1) return;
 	if (e.indexOf('READY ["') > -1) return;
+	if (e.indexOf('RESUMED ["') > -1) return console.log("Session RESUMED");
+	if (e.indexOf('Attemping to reconnect in') > -1) return;
+	if (e.indexOf('Clearing heartbeat interval') > -1) return;
+	if (e.indexOf('Connected to gateway') > -1) return;
+	if (e.indexOf('Setting a heartbeat interval for') > -1) return;
+	if (e.indexOf('Server closed the WebSocket connection') > -1) return;
 	if (e.indexOf(config.botAuthToken) > -1) {
 		e = e.split(config.botAuthToken).join("[Token Censored]");
 	}
 	console.log(e);
 	if (e.indexOf("Using gateway") > -1) {
 		process.nextTick(function () {
+			bot.ws.connection.client.removeAllListeners("error");
 			bot.ws.connection.client.on("error", (e) => {
-			console.log("Critical websocket Failure.");
-			restartBot();
+				console.log("Critical websocket Failure.");
+				restartBot();
+			});
 		});
-	});
 	}
 }
 
@@ -185,6 +201,7 @@ async function primeChannel (channel) {
 bot.on("ready", botReady);
 
 function botReady () {
+	restarting = false;
 	console.log("Connected to Discord!");
 	for (i in config.servers) {
 		var channel = bot.channels.get(config.servers[i].targetChannelID);
@@ -441,6 +458,7 @@ function onMessageUpdate (old, newm) {
 }
 
 function onBotError (e) {
+	restarting = false;
 	console.log("Discord bot error: ", e);
 	restartBot();
 }
@@ -448,6 +466,7 @@ function onBotError (e) {
 bot.on("error", onBotError);
 
 function onShardError (e) {
+	restarting = false;
 	console.error('Websocket connection error:', error);
 	restartBot();
 }
@@ -783,8 +802,12 @@ function createReasonRequest (user, issuer, info) {
 	reasonReqAcc.reset();
 }
 
+var restarting = false;
+
 //Function to restart the discord bot but maintain all other functionality.
 function restartBot () {
+	if (restarting) return console.log("Restart Blocked");
+	restarting = true;
 	console.log("Rebuilding bot..");
 	for (x in servers) servers[x].presenting = null;
 	for (i in servers) if (servers[i].message != null) servers[i].message = -1;
@@ -945,10 +968,9 @@ function handleTCPMessage (data) {
 }
 
 function printMemory () {
-	console.log("!!!!Memory Check!!!!");
+	console.log("-------Memory Check-------");
 	var t = process.memoryUsage()
 	for (i in t) console.log(i, Math.round(t[i] / 1024 / 1024 * 100)/100 + "MB");
-	console.log("!!!!END Memory Check!!!!");
 }
 
 printMemory();
