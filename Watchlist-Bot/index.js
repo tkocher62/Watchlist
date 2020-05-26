@@ -94,6 +94,8 @@ if (fs.existsSync(configFile)) {
 	console.log("Config File Not Found!");
 }
 
+var staffRole;
+
 //Create Discord bot object and login
 var bot = new Discord.Client();
 console.log("Connecting to discord...");
@@ -226,6 +228,19 @@ function botReady () {
 	} else {
 		console.log("INFO: Reports Disabled");
 	}
+  if (config.staffRole != null) {
+    bot.guilds.every(function (guild) {
+      var role = guild.roles.get(config.staffRole);
+      if (role != null) {
+        console.log("Staff role found");
+        staffRole = role;
+      } else {
+        console.log("Cheater Flagging disabled, staff Role not found in server.");
+      }
+    });
+  } else {
+    console.log("Cheater Flagging disabled, staffRole not found in config.");
+  }
 }
 
 async function performUpdate () {
@@ -880,7 +895,7 @@ tcpServer.on("connection", async function(socket) {
     socket.setKeepAlive(true, 1000);
     // Set the encoding method to read the bytes
     socket.setEncoding("utf8");
-	socket.authed = null;
+	  socket.authed = null;
     console.log("Got Connection, Waiting for ID..");
 
 	//Timeout anything that doesn't identifiy themselves
@@ -954,17 +969,35 @@ function handleTCPMessage (data) {
 			var info = {};
 			info.type = "Ban";
 			info.time = data.time;
-			if (info.time == 0) {
-				info.type = "Kick";
-			}
+			if (info.time == 0) info.type = "Kick";
 			createReasonRequest(data.user, data.issuer, info)
 			//data.time == 0 for kicks
 		} else if (data.type == "MUTE") {
 			var info = {};
 			info.type = "Mute";
 			createReasonRequest(data.user, data.issuer, info)
-		}
+		} else if (data.type == "CHEATFLAG") {
+      if (staffRole == null) return;
+      //data.code => 0 = NONE, 1 = noclip, 2 = godmode
+      createCheaterReport(data);
+    }
 	}
+}
+
+var configuredCheats = ["NONE", "Noclip Hacks", "Godmode Hacks"];
+
+async function createCheaterReport (data) {
+  if (staffRole == null) return;
+  var channel = bot.channels.get(config.watchlistChannel);
+  var embed = new Discord.RichEmbed()
+    .setColor('#a83232')
+    .setAuthor(channel.guild.name + ' Watchlist', channel.guild.iconURL)
+    .setThumbnail('https://i.imgur.com/NLbIUZk.png')
+    .addField('Player', "[" + await GetName(data.player.steamid) + " (" + data.player.steamid + ")](https://steamcommunity.com/profiles/" + data.player.steamid + ")")
+    .addField('Cheat Suspected', configuredCheats[data.code], true)
+    .setTimestamp()
+    .setFooter('Watchlist by Cyanox & Mitzey');
+  channel.send(staffRole + " Suspected Cheater report", embed);
 }
 
 function printMemory () {
@@ -989,7 +1022,7 @@ tcpServer.on("error", async function(e) {
 
 // Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
-  console.log('Caught process critical exception: ' + err.stack);
+  console.log('Caught process critical exception "' + err.code + '": ' + err.stack);
 	if (err.code == 'ETIMEDOUT') return restartBot();
 	if (err.code == 'socket hang up') return restartBot();
   process.exit(1);
