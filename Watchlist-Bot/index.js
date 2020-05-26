@@ -17,16 +17,25 @@ var staffList;
 //Staff list example: var stafflist = {steamid: discordid};
 
 //Debugging don't mind me
+const startTime = Date.now()
+const stream = require('stream')
 const PassThrough = require('stream').PassThrough;
 const b = new PassThrough();
 const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
 b.pipe(process.stdout);
 b.pipe(output);
-const console = new Console({ stdout: b, stderr: b });
-
+var liner = new stream.Transform()
+liner.pipe(b);
+liner._transform = function (chunk, encoding, done) {
+     this.push("[" + (Date.now() - startTime)/1000 + "] " + chunk.toString())
+		 done()
+}
+const console = new Console({ stdout: liner, stderr: liner });
+console.log("Start Time: " + startTime);
 if (!fs.existsSync(watchlistJSON)) fs.writeFileSync(watchlistJSON, "{}");
 if (!fs.existsSync(reportBansJSON)) fs.writeFileSync(reportBansJSON, "{}");
 if (!fs.existsSync(staffListJSON)) fs.writeFileSync(staffListJSON, "{}");
+
 
 //Read watchlist
 try {
@@ -88,7 +97,32 @@ if (fs.existsSync(configFile)) {
 //Create Discord bot object and login
 var bot = new Discord.Client();
 console.log("Connecting to discord...");
-bot.login(config.botAuthToken);
+bot.on("debug", onDebug);
+bot.login(config.botAuthToken).catch(e => {console.log("Failure connecting to discord!", e); setTimeout(restartBot, 5000);});
+
+function onDebug (e) {
+	if (e.indexOf("Sending a heartbeat") > -1 || e.indexOf("Heartbeat acknowledged,") > -1) return;
+	if (e.indexOf('READY ["') > -1) return;
+	if (e.indexOf('RESUMED ["') > -1) return console.log("Session RESUMED");
+	if (e.indexOf('Attemping to reconnect in') > -1) return;
+	if (e.indexOf('Clearing heartbeat interval') > -1) return;
+	if (e.indexOf('Connected to gateway') > -1) return;
+	if (e.indexOf('Setting a heartbeat interval for') > -1) return;
+	if (e.indexOf('Server closed the WebSocket connection') > -1) return;
+	if (e.indexOf(config.botAuthToken) > -1) {
+		e = e.split(config.botAuthToken).join("[Token Censored]");
+	}
+	console.log(e);
+	if (e.indexOf("Using gateway") > -1) {
+		process.nextTick(function () {
+			bot.ws.connection.client.removeAllListeners("error");
+			bot.ws.connection.client.on("error", (e) => {
+				console.log("Critical websocket Failure.");
+				restartBot();
+			});
+		});
+	}
+}
 
 //Object containing active server message information
 var servers = {};
@@ -167,6 +201,7 @@ async function primeChannel (channel) {
 bot.on("ready", botReady);
 
 function botReady () {
+	restarting = false;
 	console.log("Connected to Discord!");
 	for (i in config.servers) {
 		var channel = bot.channels.get(config.servers[i].targetChannelID);
@@ -182,7 +217,7 @@ function botReady () {
 	if (config.reports == true) {
 		var rchannel = bot.channels.get(config.reportsChannel);
 		if (rchannel == null) {
-			console.log("WARNING: Server reports channel not found! Ignoring this server");
+			console.log("WARNING: Server reports channel not found! Disabling reports..");
 			servers.reports = null;
 		} else {
 			flushReports(rchannel);
@@ -223,6 +258,7 @@ async function performUpdate () {
 					continue;
 				}
 				message.edit(embed).catch((e) => {if (e.code == "ECONNRESET") restartBot()});
+				for (th = message._edits.length-1; th >= 1; th--) delete message._edits.splice(th, 1);
 				if (statistics.playerList.length == 0) {
 					servers[i].presenting = 2; //Server empty present
 				} else {
@@ -250,6 +286,7 @@ async function performUpdate () {
 					continue;
 				}
 				message.edit(embed).catch((e) => {if (e.code == "ECONNRESET") restartBot()});
+				for (th = message._edits.length-1; th >= 1; th--) delete message._edits.splice(th, 1);
 				servers[i].presenting = 0; //Server lost present
 			}
 		}
@@ -289,13 +326,13 @@ function querryServer(server) {
 
 async function botMessage (message) {
 	// If it was a direct message, attempt to parse the profile link sent and get the SteamID64 using the above function
-    if (message.channel.type == "dm") {
-        if (message.content.includes("https://steamcommunity.com/id") || message.content.includes("https://steamcommunity.com/profiles")) {
-            message.channel.send("SteamID64 for user is `" + await GetSteamID(message.content.concat("?xml=1")) + "`.");
-        } else if (reasonRequests[message.author.id] != null) {
-					reasonRequests[message.author.id].handleMess(message);
-				}
-    }
+  if (message.channel.type == "dm") {
+      if (message.content.includes("https://steamcommunity.com/id") || message.content.includes("https://steamcommunity.com/profiles")) {
+        message.channel.send("SteamID64 for user is `" + await GetSteamID(message.content.concat("?xml=1")) + "`.");
+      } else if (reasonRequests[message.author.id] != null) {
+				reasonRequests[message.author.id].handleMess(message);
+			}
+  }
 
 	if (message.channel.id != config.watchlistChannel) return;
 
@@ -317,7 +354,8 @@ async function botMessage (message) {
             watchlistData[steamid] = {
                 discipline: split[1].trim(),
                 reason: split[2].trim(),
-                staff: message.author.username
+                staff: message.author.username,
+								date: Date.now()
             }
             // Write the change to the json file
             fs.writeFile(watchlistJSON, JSON.stringify(watchlistData, null, 4), err => {
@@ -328,21 +366,24 @@ async function botMessage (message) {
             message.channel.send("Error: Missing arguments.");
         }
     } else if (cmd.startsWith(config.discordBotPrefix + "lookup")) {
-		var steamid = cmd.split(" ")[1].trim();
+				var split = cmd.split(" ");
+				if (split.length < 2) return;
+				var steamid = split[1].trim();
         // Check if the json file data contains the SteamID64 provided
         if (watchlistData.hasOwnProperty(steamid)) {
             // If so, parse the data and send it in a neat format using Discord Rich Embed
             var data = watchlistData[steamid];
-            message.channel.send(new Discord.RichEmbed()
+						var emb = new Discord.RichEmbed()
 	            .setColor('#0099ff')
-                .setAuthor(message.guild.name + ' Watchlist', message.guild.iconURL)
-                .setThumbnail('https://i.imgur.com/NLbIUZk.png')
-                .addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
-                .addField('Discipline', data.discipline, true)
-                .addField('Staff Member', data.staff, true)
-								.addField('Reason', data.reason)
-                .setTimestamp()
-                .setFooter('Watchlist by Cyanox & Mitzey'));
+              .setAuthor(message.guild.name + ' Watchlist', message.guild.iconURL)
+              .setThumbnail('https://i.imgur.com/NLbIUZk.png')
+              .addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
+              .addField('Discipline', data.discipline, true)
+              .addField('Staff Member', data.staff, true)
+							.addField('Reason', data.reason)
+              .setFooter('Watchlist by Cyanox & Mitzey');
+						if (data.date != null) emb.setTimestamp(data.date);
+            message.channel.send(emb);
         } else {
             message.channel.send("Player not found in watchlist.");
         }
@@ -382,6 +423,13 @@ async function botMessage (message) {
 			message.channel.send("Player is already banned from Reports.");
 		}
 	}
+	else if (cmd.startsWith(config.discordBotPrefix + "memory")) {
+		var t = process.memoryUsage()
+		var full = "```";
+		for (i in t) full += i + ": " + ( Math.round(t[i] / 1024 / 1024 * 100) / 100 + "MB ");
+		full += "```";
+		message.channel.send(full);
+	}
 }
 
 bot.on("message", botMessage);
@@ -410,11 +458,20 @@ function onMessageUpdate (old, newm) {
 }
 
 function onBotError (e) {
-	console.log("Discord bot error!\n"+e);
+	restarting = false;
+	console.log("Discord bot error: ", e);
 	restartBot();
 }
 
 bot.on("error", onBotError);
+
+function onShardError (e) {
+	restarting = false;
+	console.error('Websocket connection error:', error);
+	restartBot();
+}
+
+bot.on('shardError', onShardError);
 
 async function flushReports (channel) {
 	var mess = new Discord.RichEmbed().setColor('#0099ff').setTitle('Loading..');
@@ -449,7 +506,7 @@ function createReactionReport (server, user, reason) {
 		this.accepted = true;
 		var o = {}; o.type = "REPORT"; o.sendto = this.user.steamid; o.resp = 1; o = JSON.stringify(o);
 		if (this.server.socket) this.server.socket.write(o);
-		this.destroy();
+		//this.destroy();
 	}
 
 	report.ban = function () {
@@ -504,7 +561,7 @@ function len (o) {
 function initReasonRequestUser (id) {
 	var o = {};
 	o.userID = id;
-	o.requests = [];
+	o.requests = {};
 
 	o.timeout = function () {
 		if (this.stop) return;
@@ -528,19 +585,22 @@ function initReasonRequestUser (id) {
 	}.bind(o);
 
 	o.updateReqs = function () {
-		if (this.requests.length == 0 && this.stop != true) return this.destroy();
+		if (len(this.requests) == 0 && this.stop != true) return this.destroy();
+		var oldest;
+		for (i in this.requests) {
+			var r = this.requests[i];
+			if (oldest == null) oldest = r;
+			if (oldest.issueTime > r.issueTime) oldest = r;
+		}
+		if (oldest != null) oldest.active = true;
 		for (i in this.requests) {
 			if (i == 0) continue;
 			var r = this.requests[i];
-			if (r.active) {
+			if (r.active && r.id != oldest.id) {
 				r.active = false;
 				r.update();
 			}
 			if (r.message == null) this.requests[i].update();
-		}
-		if (this.requests[0] != null) {
-			this.requests[0].active = true;
-			this.requests[0].update();
 		}
 	}.bind(o);
 
@@ -559,7 +619,8 @@ function initReasonRequestUser (id) {
 	o.lastWatch = null;
 
 	o.handleMess = function (message) {
-		if (this.stop) return;
+		console.log("Got reason message from " + message.author.username + " @ " + Date.now());
+		if (this.stop) return console.log("Message Handle Cancel");
 		this.reset();
 		o.lastWatch = message.id;
 		for (i in this.requests) {
@@ -576,7 +637,7 @@ function initReasonRequestUser (id) {
 
 	o.deleteReqId = function (id) {
 		if (id == null) return;
-		for (i in this.requests) if (this.requests[i].id == id) this.requests.splice(i, 1);
+		for (i in this.requests) if (this.requests[i].id == id) delete this.requests[i];
 	}.bind(o);
 
 	o.destroy = function () {
@@ -622,10 +683,27 @@ async function generateReasonRequestEmbed (info, reason, user, issuer, active) {
 		return embed;
 }
 
+async function printWatchlist (steamid) {
+	var data = watchlistData[steamid];
+	var watchlistChannel = bot.channels.get(config.watchlistChannel);
+	var emb = new Discord.RichEmbed()
+		.setColor('#0099ff')
+		.setAuthor(watchlistChannel.guild.name + ' Watchlist', watchlistChannel.guild.iconURL)
+		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
+		.addField('Player', "[" + await GetName(steamid) + " (" + steamid + ")](https://steamcommunity.com/profiles/" + steamid + ")")
+		.addField('Discipline', data.discipline, true)
+		.addField('Staff Member', data.staff, true)
+		.addField('Reason', data.reason)
+		.setFooter('Watchlist by Cyanox & Mitzey');
+	if (data.date != null) emb.setTimestamp(data.date);
+	watchlistChannel.send(emb);
+}
+
 function createReasonRequest (user, issuer, info) {
 	var reasonReq = {};
 	reasonReq.info = info;
-	reasonReq.id = (new Date().getTime()).toString() + "-" + user.steamid;
+	reasonReq.id = (new Date().getTime()).toString() + "-" + user.steamid + "-" + Math.floor(Math.random()*9999999999+1000000000);
+	reasonReq.issueTime = new Date().getTime();
 	reasonReq.user = user;
 	reasonReq.issuer = issuer;
 	reasonReq.state = 0; //0 = waiting for input, 1 = verification
@@ -633,7 +711,9 @@ function createReasonRequest (user, issuer, info) {
 	reasonReq.message = null;
 	reasonReq.info.guild = bot.channels.get(config.reportsChannel).guild;
 
-	if (staffList[reasonReq.issuer.steamid] == null) return;
+	console.log("Generated reason request " + reasonReq.id);
+
+	if (staffList[reasonReq.issuer.steamid] == null) return console.log("Steam ID (" + reasonReq.issuer.steamid + ") not configured, reason request failed.");
 	reasonReq.discordUser = bot.users.get(staffList[reasonReq.issuer.steamid]);
 
 	if (reasonRequests[reasonReq.discordUser.id] == null) {
@@ -641,7 +721,7 @@ function createReasonRequest (user, issuer, info) {
 	}
 
 	reasonReqAcc = reasonRequests[reasonReq.discordUser.id];
-	reasonReqAcc.requests.push(reasonReq);
+	reasonReqAcc.requests[reasonReq.id] = reasonReq;
 
 	//Reaction Handler
 	reasonReq.handle = function (messageReaction, user) {
@@ -657,7 +737,7 @@ function createReasonRequest (user, issuer, info) {
 	reasonReq.update = async function () {
 		if (this.message == null) {
 			this.discordUser.send("`Incoming Reason Request`").then(function (message) {
-				message.react("🚫").catch((e) => {/*ignore reaction failures*/});
+				message.react("🚫").catch((e) => {message.react("🚫")});
 				this.message = message
 				this.update();
 			}.bind(this));
@@ -675,6 +755,7 @@ function createReasonRequest (user, issuer, info) {
 		}
 
 		this.message.edit("`" + active + middle + "`", embed).catch(e => {console.log("Failed Setting Message Edit")});
+		for (th = this.message._edits.length-1; th >= 1; th--) delete this.message._edits.splice(th, 1);
 
 	}.bind(reasonReq);
 
@@ -693,7 +774,8 @@ function createReasonRequest (user, issuer, info) {
 				watchlistData[this.user.steamid] = {
 						discipline: discipline,
 						reason: this.reason,
-						staff: this.discordUser.username
+						staff: this.discordUser.username,
+						date: Date.now()
 				}
 
 				// Write the change to the json file
@@ -701,9 +783,12 @@ function createReasonRequest (user, issuer, info) {
 						if (err) throw err;
 				});
 
+				printWatchlist(this.user.steamid);
+
 				this.message.edit("", new Discord.RichEmbed().setTitle(":white_check_mark: Watchlist Entry added")).then(function () {
 					this.destroy(2500);
 				}.bind(this));
+				for (th = this.message._edits.length-1; th >= 1; th-- ) delete this.message._edits.splice(th, 1);
 			}
 	}.bind(reasonReq);
 
@@ -717,21 +802,36 @@ function createReasonRequest (user, issuer, info) {
 	reasonReqAcc.reset();
 }
 
+var restarting = false;
+
 //Function to restart the discord bot but maintain all other functionality.
 function restartBot () {
+	if (restarting) return console.log("Restart Blocked");
+	restarting = true;
 	console.log("Rebuilding bot..");
 	for (x in servers) servers[x].presenting = null;
 	for (i in servers) if (servers[i].message != null) servers[i].message = -1;
+		bot.removeAllListeners("ready");
+		bot.removeAllListeners("message");
+		bot.removeAllListeners("messageReactionAdd");
+		bot.removeAllListeners("messageDelete");
+		bot.removeAllListeners("error");
+		bot.removeAllListeners("messageUpdate")
+		bot.removeAllListeners('shardError');
+		bot.removeAllListeners("debug");
 	bot.destroy().then(function () {
+		delete bot;
 		bot = new Discord.Client();
 		bot.on("ready", botReady);
 		bot.on("message", botMessage);
 		bot.on("messageReactionAdd", onReaction);
 		bot.on("messageDelete", onMessageDelete);
 		bot.on("error", onBotError);
+		bot.on("debug", onDebug);
 		bot.on("messageUpdate", onMessageUpdate)
+		bot.on('shardError', onShardError);
 		console.log("Connecting to discord...");
-		bot.login(config.botAuthToken);
+		bot.login(config.botAuthToken).catch(e => {console.log("Failure connecting to discord!", e); setTimeout(restartBot, 5000);});
 	});
 	activeReactions = {};
 }
@@ -867,6 +967,16 @@ function handleTCPMessage (data) {
 	}
 }
 
+function printMemory () {
+	console.log("-------Memory Check-------");
+	var t = process.memoryUsage()
+	for (i in t) console.log(i, Math.round(t[i] / 1024 / 1024 * 100)/100 + "MB");
+}
+
+printMemory();
+
+setInterval(printMemory, 60000*60);
+
 //Catch any TCP server Errors
 tcpServer.on("error", async function(e) {
     if (e.code === "EADDRINUSE") {
@@ -879,8 +989,9 @@ tcpServer.on("error", async function(e) {
 
 // Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
-
-  console.log('Caught exception: ' + err.stack);
+  console.log('Caught process critical exception: ' + err.stack);
+	if (err.code == 'ETIMEDOUT') return restartBot();
+	if (err.code == 'socket hang up') return restartBot();
   process.exit(1);
 });
 
