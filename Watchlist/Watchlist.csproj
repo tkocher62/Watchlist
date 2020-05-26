@@ -69,6 +69,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="API\Network.cs" />
     <Compile Include="CommandHandler.cs" />
     <Compile Include="DataObjects\Ban.cs" />
     <Compile Include="DataObjects\Lookup.cs" />

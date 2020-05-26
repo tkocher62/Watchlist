@@ -15,7 +15,7 @@ namespace Watchlist
 	{
 		private string ip;
 		private int port;
-		private Socket socket;
+		internal static Socket socket;
 
 		public Tcp(string ip, int port)
 		{
