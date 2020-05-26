@@ -979,19 +979,19 @@ function handleTCPMessage (data) {
 		} else if (data.type == "CHEATFLAG") {
       if (staffRole == null) return;
       //data.code => 0 = NONE, 1 = noclip, 2 = godmode
-      createCheaterReport(data);
+      createCheaterReport(servers[this.authed], data);
     }
 	}
 }
 
 var configuredCheats = ["NONE", "Noclip Hacks", "Godmode Hacks"];
 
-async function createCheaterReport (data) {
+async function createCheaterReport (server, data) {
   if (staffRole == null) return;
   var channel = bot.channels.get(config.watchlistChannel);
   var embed = new Discord.RichEmbed()
     .setColor('#a83232')
-    .setAuthor(channel.guild.name + ' Watchlist', channel.guild.iconURL)
+    .setAuthor(channel.guild.name + ' Cheater Report - ' + (server.name || server.id), channel.guild.iconURL)
     .setThumbnail('https://i.imgur.com/NLbIUZk.png')
     .addField('Player', "[" + await GetName(data.player.steamid) + " (" + data.player.steamid + ")](https://steamcommunity.com/profiles/" + data.player.steamid + ")")
     .addField('Cheat Suspected', configuredCheats[data.code], true)
