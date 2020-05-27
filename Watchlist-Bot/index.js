@@ -21,7 +21,7 @@ const startTime = Date.now()
 const stream = require('stream')
 const PassThrough = require('stream').PassThrough;
 const b = new PassThrough();
-const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
+const output = fs.createWriteStream('./stdout.log', { 'flags': 'a+' });
 b.pipe(process.stdout);
 b.pipe(output);
 var liner = new stream.Transform()
@@ -264,6 +264,12 @@ async function performUpdate () {
 				for (x in statistics.playerList) if (watchlistData[statistics.playerList[x].steamid] != null) statistics.playerList[x].watchList = watchlistData[statistics.playerList[x].steamid];
 				var embed = embedBuilder(servers[i], statistics.playerList.length, statistics.playerList);
 				var channel = bot.channels.get(servers[i].targetChannelID);
+        if (channel == null) {
+          servers[i].message = -1;
+					console.log("Error, couldn't find server channel for update, refreshing server " + servers[i].id)
+          restartBot();
+					continue;
+        }
 				channel.customId = servers[i].id;
 				var message = channel.messages.get(servers[i].message);
 				if (message == null) {
@@ -846,7 +852,7 @@ function restartBot () {
 		bot.on("messageUpdate", onMessageUpdate)
 		bot.on('shardError', onShardError);
 		console.log("Connecting to discord...");
-		bot.login(config.botAuthToken).catch(e => {console.log("Failure connecting to discord!", e); setTimeout(restartBot, 5000);});
+		bot.login(config.botAuthToken).catch(e => {console.log("Failure reconnecting to discord!", e); setTimeout(restartBot, 5000); restarting = false;});
 	});
 	activeReactions = {};
 }
