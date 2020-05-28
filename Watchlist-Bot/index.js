@@ -194,7 +194,7 @@ async function GetSteamID(url)
 
 async function primeChannel (channel) {
 	var mess = new Discord.RichEmbed().setColor('#0099ff').setTitle('Loading..');
-	var messages = await channel.fetchMessages();
+	var messages = await channel.fetchMessages().catch(e => {console.log("Error getting messages for bulk!"); return restartBot()});
 	await channel.bulkDelete(messages);
 	channel.send(mess).then(message => servers[channel.customId].message = message.id);
 }
@@ -832,14 +832,14 @@ function restartBot () {
 	console.log("Rebuilding bot..");
 	for (x in servers) servers[x].presenting = null;
 	for (i in servers) if (servers[i].message != null) servers[i].message = -1;
-		bot.removeAllListeners("ready");
-		bot.removeAllListeners("message");
-		bot.removeAllListeners("messageReactionAdd");
-		bot.removeAllListeners("messageDelete");
-		bot.removeAllListeners("error");
-		bot.removeAllListeners("messageUpdate")
-		bot.removeAllListeners('shardError');
-		bot.removeAllListeners("debug");
+	bot.removeAllListeners("ready");
+	bot.removeAllListeners("message");
+	bot.removeAllListeners("messageReactionAdd");
+	bot.removeAllListeners("messageDelete");
+	bot.removeAllListeners("error");
+	bot.removeAllListeners("messageUpdate")
+	bot.removeAllListeners('shardError');
+	bot.removeAllListeners("debug");
 	bot.destroy().then(function () {
 		delete bot;
 		bot = new Discord.Client();
@@ -853,7 +853,21 @@ function restartBot () {
 		bot.on('shardError', onShardError);
 		console.log("Connecting to discord...");
 		bot.login(config.botAuthToken).catch(e => {console.log("Failure reconnecting to discord!", e); setTimeout(restartBot, 5000); restarting = false;});
-	});
+	}).catch(e => {
+    console.log("Error destroying bot: ", e);
+    delete bot;
+		bot = new Discord.Client();
+		bot.on("ready", botReady);
+		bot.on("message", botMessage);
+		bot.on("messageReactionAdd", onReaction);
+		bot.on("messageDelete", onMessageDelete);
+		bot.on("error", onBotError);
+		bot.on("debug", onDebug);
+		bot.on("messageUpdate", onMessageUpdate)
+		bot.on('shardError', onShardError);
+		console.log("Connecting to discord...");
+		bot.login(config.botAuthToken).catch(e => {console.log("Failure reconnecting to discord!", e); setTimeout(restartBot, 5000); restarting = false;});
+  });
 	activeReactions = {};
 }
 
