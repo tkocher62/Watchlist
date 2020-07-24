@@ -139,7 +139,7 @@ async function GetName (steamid) {
 	try {
 		obj = await getJSON(url);
 	} catch (e) {
-		console.error(e);
+		//console.error(e);
 		return -1; // Something went wrong in the request
 	}
 	if (obj.response.players.length == 0) return -2; //No Steam ID match
@@ -171,7 +171,7 @@ async function GetSteamID(url) {
 		const obj = await parser(await get(url));
 		return obj.profile.steamID64[0];
     } catch (error) {
-        console.log(error);
+        //console.log(error);
 		return -1;
     }
 }
@@ -358,7 +358,7 @@ async function botMessage (message) {
 	if (message.channel.id != config.watchlistChannel) return;
 
 	// To lower case to prevent being case sensitive
-    var cmd = message.content.toLowerCase();
+  var cmd = message.content.toLowerCase();
 
 	if (cmd == (config.discordBotPrefix + "reload")) {
 		await message.channel.send("Reloading Discord Integration..");
