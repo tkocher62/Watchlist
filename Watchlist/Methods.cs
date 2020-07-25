@@ -7,12 +7,12 @@ namespace Watchlist
 		private int[] div = { 60, 24, 30, 12 };
 		private string[] suffix = { "m", "h", "d", "mon", "y" };
 
-		private User HubToUser(ReferenceHub hub)
+		private User PlyToUser(Exiled.API.Features.Player player)
 		{
 			return new User
 			{
-				name = hub.nicknameSync.Network_myNickSync,
-				steamid = hub.characterClassManager.UserId.Replace("@steam", "")
+				name = player.Nickname,
+				steamid = player.UserId.Replace("@steam", "")
 			};
 		}
 	}

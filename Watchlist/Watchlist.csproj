@@ -36,14 +36,14 @@
     <Reference Include="Assembly-CSharp_publicized">
       <HintPath>..\..\..\..\Desktop\publicized_assemblies\Assembly-CSharp_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="EXILED">
-      <HintPath>..\..\..\..\AppData\Roaming\EXILED\EXILED.dll</HintPath>
+    <Reference Include="Exiled.API">
+      <HintPath>..\..\..\..\AppData\Roaming\EXILED\Plugins\dependencies\Exiled.API.dll</HintPath>
     </Reference>
-    <Reference Include="EXILED_Events">
-      <HintPath>..\..\..\..\AppData\Roaming\Plugins\EXILED_Events.dll</HintPath>
+    <Reference Include="Exiled.Events">
+      <HintPath>..\..\..\..\AppData\Roaming\EXILED\Plugins\Exiled.Events.dll</HintPath>
     </Reference>
-    <Reference Include="EXILED_Permissions">
-      <HintPath>..\..\..\..\AppData\Roaming\Plugins\EXILED_Permissions.dll</HintPath>
+    <Reference Include="Exiled.Loader">
+      <HintPath>..\..\..\..\AppData\Roaming\EXILED\Exiled.Loader.dll</HintPath>
     </Reference>
     <Reference Include="Mirror, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="API\Network.cs" />
     <Compile Include="CommandHandler.cs" />
+    <Compile Include="Config.cs" />
     <Compile Include="DataObjects\Ban.cs" />
     <Compile Include="DataObjects\Lookup.cs" />
     <Compile Include="DataObjects\Mute.cs" />
@@ -79,13 +80,19 @@
     <Compile Include="EventHandlers.cs" />
     <Compile Include="DataObjects\Identify.cs" />
     <Compile Include="Methods.cs" />
-    <Compile Include="Plugin.cs" />
+    <Compile Include="Watchlist.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DataObjects\Report.cs" />
     <Compile Include="Tcp.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\..\..\..\AppData\Roaming\EXILED\Exiled.Loader.dll" />
+    <Analyzer Include="..\..\..\..\AppData\Roaming\EXILED\Plugins\dependencies\Exiled.API.dll" />
+    <Analyzer Include="..\..\..\..\AppData\Roaming\EXILED\Plugins\Exiled.Events.dll" />
+    <Analyzer Include="..\..\..\..\Desktop\publicized_assemblies\Assembly-CSharp_publicized.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
