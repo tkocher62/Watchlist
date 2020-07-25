@@ -21,7 +21,7 @@ const startTime = Date.now()
 const stream = require('stream')
 const PassThrough = require('stream').PassThrough;
 const b = new PassThrough();
-const output = fs.createWriteStream('./stdout.log', { 'flags': 'a', 'encoding': null, 'mode': 0666});
+const output = fs.createWriteStream('./stdout.log', { 'flags': 'a+' });
 b.pipe(process.stdout);
 b.pipe(output);
 var liner = new stream.Transform()
@@ -94,6 +94,8 @@ if (fs.existsSync(configFile)) {
 	console.log("Config File Not Found!");
 }
 
+var staffRole;
+
 //Create Discord bot object and login
 var bot = new Discord.Client();
 console.log("Connecting to discord...");
@@ -137,7 +139,7 @@ async function GetName (steamid) {
 	try {
 		obj = await getJSON(url);
 	} catch (e) {
-		console.error(e);
+		//console.error(e);
 		return -1; // Something went wrong in the request
 	}
 	if (obj.response.players.length == 0) return -2; //No Steam ID match
@@ -169,7 +171,7 @@ async function GetSteamID(url) {
 		const obj = await parser(await get(url));
 		return obj.profile.steamID64[0];
     } catch (error) {
-        console.log(error);
+        //console.log(error);
 		return -1;
     }
 }
@@ -192,7 +194,7 @@ async function GetSteamID(url)
 
 async function primeChannel (channel) {
 	var mess = new Discord.RichEmbed().setColor('#0099ff').setTitle('Loading..');
-	var messages = await channel.fetchMessages();
+	var messages = await channel.fetchMessages().catch(e => {console.log("Error getting messages for bulk!"); return restartBot()});
 	await channel.bulkDelete(messages);
 	channel.send(mess).then(message => servers[channel.customId].message = message.id);
 }
@@ -226,6 +228,19 @@ function botReady () {
 	} else {
 		console.log("INFO: Reports Disabled");
 	}
+  if (config.staffRole != null) {
+    bot.guilds.every(function (guild) {
+      var role = guild.roles.get(config.staffRole);
+      if (role != null) {
+        console.log("Staff role found");
+        staffRole = role;
+      } else {
+        console.log("Cheater Flagging disabled, staff Role not found in server.");
+      }
+    });
+  } else {
+    console.log("Cheater Flagging disabled, staffRole not found in config.");
+  }
 }
 
 async function performUpdate () {
@@ -249,6 +264,12 @@ async function performUpdate () {
 				for (x in statistics.playerList) if (watchlistData[statistics.playerList[x].steamid] != null) statistics.playerList[x].watchList = watchlistData[statistics.playerList[x].steamid];
 				var embed = embedBuilder(servers[i], statistics.playerList.length, statistics.playerList);
 				var channel = bot.channels.get(servers[i].targetChannelID);
+        if (channel == null) {
+          servers[i].message = -1;
+					console.log("Error, couldn't find server channel for update, refreshing server " + servers[i].id)
+          restartBot();
+					continue;
+        }
 				channel.customId = servers[i].id;
 				var message = channel.messages.get(servers[i].message);
 				if (message == null) {
@@ -337,7 +358,7 @@ async function botMessage (message) {
 	if (message.channel.id != config.watchlistChannel) return;
 
 	// To lower case to prevent being case sensitive
-    var cmd = message.content.toLowerCase();
+  var cmd = message.content.toLowerCase();
 
 	if (cmd == (config.discordBotPrefix + "reload")) {
 		await message.channel.send("Reloading Discord Integration..");
@@ -811,14 +832,14 @@ function restartBot () {
 	console.log("Rebuilding bot..");
 	for (x in servers) servers[x].presenting = null;
 	for (i in servers) if (servers[i].message != null) servers[i].message = -1;
-		bot.removeAllListeners("ready");
-		bot.removeAllListeners("message");
-		bot.removeAllListeners("messageReactionAdd");
-		bot.removeAllListeners("messageDelete");
-		bot.removeAllListeners("error");
-		bot.removeAllListeners("messageUpdate")
-		bot.removeAllListeners('shardError');
-		bot.removeAllListeners("debug");
+	bot.removeAllListeners("ready");
+	bot.removeAllListeners("message");
+	bot.removeAllListeners("messageReactionAdd");
+	bot.removeAllListeners("messageDelete");
+	bot.removeAllListeners("error");
+	bot.removeAllListeners("messageUpdate")
+	bot.removeAllListeners('shardError');
+	bot.removeAllListeners("debug");
 	bot.destroy().then(function () {
 		delete bot;
 		bot = new Discord.Client();
@@ -831,8 +852,22 @@ function restartBot () {
 		bot.on("messageUpdate", onMessageUpdate)
 		bot.on('shardError', onShardError);
 		console.log("Connecting to discord...");
-		bot.login(config.botAuthToken).catch(e => {console.log("Failure connecting to discord!", e); setTimeout(restartBot, 5000);});
-	});
+		bot.login(config.botAuthToken).catch(e => {console.log("Failure reconnecting to discord!", e); setTimeout(restartBot, 5000); restarting = false;});
+	}).catch(e => {
+    console.log("Error destroying bot: ", e);
+    delete bot;
+		bot = new Discord.Client();
+		bot.on("ready", botReady);
+		bot.on("message", botMessage);
+		bot.on("messageReactionAdd", onReaction);
+		bot.on("messageDelete", onMessageDelete);
+		bot.on("error", onBotError);
+		bot.on("debug", onDebug);
+		bot.on("messageUpdate", onMessageUpdate)
+		bot.on('shardError', onShardError);
+		console.log("Connecting to discord...");
+		bot.login(config.botAuthToken).catch(e => {console.log("Failure reconnecting to discord!", e); setTimeout(restartBot, 5000); restarting = false;});
+  });
 	activeReactions = {};
 }
 
@@ -880,7 +915,7 @@ tcpServer.on("connection", async function(socket) {
     socket.setKeepAlive(true, 1000);
     // Set the encoding method to read the bytes
     socket.setEncoding("utf8");
-	socket.authed = null;
+	  socket.authed = null;
     console.log("Got Connection, Waiting for ID..");
 
 	//Timeout anything that doesn't identifiy themselves
@@ -954,17 +989,35 @@ function handleTCPMessage (data) {
 			var info = {};
 			info.type = "Ban";
 			info.time = data.time;
-			if (info.time == 0) {
-				info.type = "Kick";
-			}
+			if (info.time == 0) info.type = "Kick";
 			createReasonRequest(data.user, data.issuer, info)
 			//data.time == 0 for kicks
 		} else if (data.type == "MUTE") {
 			var info = {};
 			info.type = "Mute";
 			createReasonRequest(data.user, data.issuer, info)
-		}
+		} else if (data.type == "CHEATFLAG") {
+      if (staffRole == null) return;
+      //data.code => 0 = NONE, 1 = noclip, 2 = godmode
+      createCheaterReport(servers[this.authed], data);
+    }
 	}
+}
+
+var configuredCheats = ["NONE", "Noclip Hacks", "Godmode Hacks"];
+
+async function createCheaterReport (server, data) {
+  if (staffRole == null) return;
+  var channel = bot.channels.get(config.watchlistChannel);
+  var embed = new Discord.RichEmbed()
+    .setColor('#a83232')
+    .setAuthor(channel.guild.name + ' Cheater Report - ' + (server.name || server.id), channel.guild.iconURL)
+    .setThumbnail('https://i.imgur.com/NLbIUZk.png')
+    .addField('Player', "[" + await GetName(data.player.steamid) + " (" + data.player.steamid + ")](https://steamcommunity.com/profiles/" + data.player.steamid + ")")
+    .addField('Cheat Suspected', configuredCheats[data.code], true)
+    .setTimestamp()
+    .setFooter('Watchlist by Cyanox & Mitzey');
+  channel.send(staffRole + " Suspected Cheater report", embed);
 }
 
 function printMemory () {
@@ -989,7 +1042,7 @@ tcpServer.on("error", async function(e) {
 
 // Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
-  console.log('Caught process critical exception: ' + err.stack);
+  console.log('Caught process critical exception "' + err.code + '": ' + err.stack);
 	if (err.code == 'ETIMEDOUT') return restartBot();
 	if (err.code == 'socket hang up') return restartBot();
   process.exit(1);
