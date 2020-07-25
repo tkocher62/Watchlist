@@ -16,130 +16,122 @@ namespace Watchlist
 
 		public void OnRACommand(SendingRemoteAdminCommandEventArgs ev)
 		{
-			if (ev.Arguments.Count > 0)
+			string cmd = ev.Name.ToLower();
+			if (cmd == "lookup" && ev.Sender.ReferenceHub.serverRoles.RemoteAdmin)
 			{
-				string cmd = ev.Arguments[0].ToLower();
-				if (cmd == "lookup" && ev.Sender.ReferenceHub.serverRoles.RemoteAdmin)
+				ev.IsAllowed = false;
+				if (ev.Arguments.Count == 1)
 				{
-					ev.IsAllowed = false;
-					if (ev.Arguments.Count == 2)
+					if (ev.Arguments[0].Length > 0)
 					{
-						if (ev.Arguments[1].Length > 0)
+						Player player = null;
+						if (int.TryParse(ev.Arguments[0], out int a))
 						{
-							Player player = null;
-							if (int.TryParse(ev.Arguments[1], out int a))
-							{
-								player = Player.Get(a);
-							}
-							else
-							{
-								player = Player.Get(ev.Arguments[1]);
-							}
-							if (player != null)
-							{
-								tcp.SendData(new Lookup
-								{
-									sender = ev.Sender.UserId.Replace("@steam", ""),
-									target = player.UserId.Replace("@steam", "")
-								});
-							}
-							else
-							{
-								ev.Sender.RemoteAdminMessage("Invalid player.", false);
-							}
+							player = Player.Get(a);
 						}
 						else
 						{
-							ev.Sender.RemoteAdminMessage("USAGE: LOOKUP (NAME / STEAMID / PLAYERID)", false);
-							return;
+							player = Player.Get(ev.Arguments[0]);
+						}
+						if (player != null)
+						{
+							tcp.SendData(new Lookup
+							{
+								sender = ev.Sender.UserId.Replace("@steam", ""),
+								target = player.UserId.Replace("@steam", "")
+							});
+						}
+						else
+						{
+							ev.Sender.RemoteAdminMessage("Invalid player.", false);
 						}
 					}
 					else
 					{
-						ev.Sender.RemoteAdminMessage("USAGE: LOOKUP (NAME / STEAMID / PLAYERID).", false);
+						ev.Sender.RemoteAdminMessage("USAGE: LOOKUP (NAME / STEAMID / PLAYERID)", false);
+						return;
 					}
 				}
-				else if (cmd == "ban")
+				else
 				{
-					string[] split = cmd.Replace("ban", "").Split('.');
+					ev.Sender.RemoteAdminMessage("USAGE: LOOKUP (NAME / STEAMID / PLAYERID).", false);
+				}
+			}
+			else if (cmd == "ban")
+			{
+				if (int.TryParse(ev.Arguments[0].Trim(), out int pid))
+				{
+					Player player = Player.Get(pid);
 
-					if (int.TryParse(split[0].Trim(), out int pid))
+					if (int.TryParse(ev.Arguments[1].Trim(), out int t))
 					{
-						Player player = Player.Get(pid);
-
-						if (int.TryParse(split[1].Trim(), out int t))
+						if (t == 0)
 						{
-							if (t == 0)
+							tcp.SendData(new Ban()
 							{
-								tcp.SendData(new Ban()
-								{
-									time = "0",
-									issuer = PlyToUser(ev.Sender),
-									user = PlyToUser(player)
-								});
+								time = "0",
+								issuer = PlyToUser(ev.Sender),
+								user = PlyToUser(player)
+							});
+						}
+						else
+						{
+							int depth = 0;
+							int time = t;
+							while (t > 1)
+							{
+								time = t;
+								t /= div[depth];
+								if (t > 1) depth++;
 							}
-							else
-							{
-								int depth = 0;
-								int time = t;
-								while (t > 1)
-								{
-									time = t;
-									t /= div[depth];
-									if (t > 1) depth++;
-								}
 
-								tcp.SendData(new Ban()
-								{
-									time = time + suffix[depth],
-									issuer = PlyToUser(ev.Sender),
-									user = PlyToUser(player)
-								});
-							}
+							tcp.SendData(new Ban()
+							{
+								time = time + suffix[depth],
+								issuer = PlyToUser(ev.Sender),
+								user = PlyToUser(player)
+							});
 						}
 					}
 				}
-				else if (cmd == "mute")
+			}
+			else if (cmd == "mute")
+			{
+				if (int.TryParse(cmd.Replace("mute", "").Replace(".", "").Trim(), out int pid))
 				{
-					if (int.TryParse(cmd.Replace("mute", "").Replace(".", "").Trim(), out int pid))
-					{
-						Player player = Player.Get(pid);
+					Player player = Player.Get(pid);
 
-						tcp.SendData(new Mute()
-						{
-							issuer = PlyToUser(ev.Sender),
-							user = PlyToUser(player)
-						});
-					}
+					tcp.SendData(new Mute()
+					{
+						issuer = PlyToUser(ev.Sender),
+						user = PlyToUser(player)
+					});
 				}
 			}
 		}
 
 		public void OnConsoleCommand(SendingConsoleCommandEventArgs ev)
 		{
-			if (ev.Arguments.Count > 0)
+			string cmd = ev.Name.ToLower();
+			if (cmd == "report")
 			{
-				string cmd = ev.Arguments[0].ToLower();
-				if (cmd == "report")
+				string msg = cmd.Substring(cmd.IndexOf("report") + 7).Trim();
+
+				Report report = new Report
 				{
-					string msg = cmd.Substring(cmd.IndexOf("report") + 7).Trim();
+					sender = PlyToUser(ev.Player),
+					report = msg
+				};
 
-					Report report = new Report
-					{
-						sender = PlyToUser(ev.Player),
-						report = msg
-					};
-
-					if (msg.Length > 0)
-					{
-						tcp.SendData(report);
-						ev.ReturnMessage = "Sending report...";
-						ev.Color = "yellow";
-					}
-					else
-					{
-						ev.ReturnMessage = "URAGE: REPORT (MESSAGE)";
-					}
+				if (msg.Length > 0)
+				{
+					tcp.SendData(report);
+					ev.ReturnMessage = "Sending report...";
+					ev.Color = "yellow";
+				}
+				else
+				{
+					ev.ReturnMessage = "URAGE: REPORT (MESSAGE)";
 				}
 			}
 		}
