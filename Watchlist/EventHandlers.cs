@@ -115,7 +115,8 @@ namespace Watchlist
 			string cmd = ev.Name.ToLower();
 			if (cmd == "report")
 			{
-				string msg = cmd.Substring(cmd.IndexOf("report") + 7).Trim();
+				string msg = string.Empty;
+				foreach (string s in ev.Arguments) msg += s;
 
 				Report report = new Report
 				{
