@@ -59,7 +59,7 @@ namespace Watchlist
 			}
 			else if (cmd == "ban")
 			{
-				if (int.TryParse(ev.Arguments[0].Trim(), out int pid))
+				if (int.TryParse(ev.Arguments[0].Replace(".", "").Trim(), out int pid))
 				{
 					Player player = Player.Get(pid);
 

@@ -1,5 +1,4 @@
 ﻿using Exiled.API.Features;
-using Exiled.Events;
 
 namespace Watchlist
 {
