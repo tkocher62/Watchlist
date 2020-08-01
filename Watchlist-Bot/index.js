@@ -110,6 +110,8 @@ function onDebug (e) {
 	if (e.indexOf('Clearing heartbeat interval') > -1) return;
 	if (e.indexOf('Connected to gateway') > -1) return;
 	if (e.indexOf('Setting a heartbeat interval for') > -1) return;
+  if (e.indexOf('Attempting to resume session') > -1) return;
+  if (e.indexOf('Session RESUMED') > -1) return;
 	if (e.indexOf('Server closed the WebSocket connection') > -1) return;
 	if (e.indexOf(config.botAuthToken) > -1) {
 		e = e.split(config.botAuthToken).join("[Token Censored]");
