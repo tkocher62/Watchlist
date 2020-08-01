@@ -121,7 +121,7 @@ namespace Watchlist
 				Report report = new Report
 				{
 					sender = PlyToUser(ev.Player),
-					report = msg.Trim();
+					report = msg.Trim()
 				};
 
 				if (msg.Length > 0)
