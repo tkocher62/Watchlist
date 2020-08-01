@@ -116,12 +116,12 @@ namespace Watchlist
 			if (cmd == "report")
 			{
 				string msg = string.Empty;
-				foreach (string s in ev.Arguments) msg += s;
+				foreach (string s in ev.Arguments) msg += $"{s} ";
 
 				Report report = new Report
 				{
 					sender = PlyToUser(ev.Player),
-					report = msg
+					report = msg.Trim();
 				};
 
 				if (msg.Length > 0)
