@@ -97,7 +97,7 @@ namespace Watchlist
 			}
 			else if (cmd == "mute")
 			{
-				if (int.TryParse(cmd.Replace("mute", "").Replace(".", "").Trim(), out int pid))
+				if (int.TryParse(ev.Arguments[0].Replace(".", "").Trim(), out int pid))
 				{
 					Player player = Player.Get(pid);
 
