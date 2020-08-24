@@ -697,7 +697,7 @@ async function generateReasonRequestEmbed (info, reason, user, issuer, active) {
 		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
 		.addField('Player', "[" + await GetName(user.steamid) + " (" + user.steamid + ")](https://steamcommunity.com/profiles/" + user.steamid + ")")
 		.addField('Discipline',	t, true)
-		.addField('Staff Member', issuer.name, true)
+		.addField('Staff Member', issuer.discordUser, true)
 		.setTimestamp()
 		.setFooter('Watchlist by Cyanox & Mitzey');
 		if (reason) {
@@ -738,6 +738,12 @@ function createReasonRequest (user, issuer, info) {
 
 	if (staffList[reasonReq.issuer.steamid] == null) return console.log("Steam ID (" + reasonReq.issuer.steamid + ") not configured, reason request failed.");
 	reasonReq.discordUser = bot.users.get(staffList[reasonReq.issuer.steamid]);
+
+  reasonReq.issuer.discordName = reasonReq.discordUser;
+
+  if (watchlistData[reasonReq.user.steamid] != null && watchlistData[this.user.steamid].reason != null) {
+    reasonReq.reason = watchlistData[this.user.steamid].reason;
+  }
 
 	if (reasonRequests[reasonReq.discordUser.id] == null) {
 		reasonRequests[reasonReq.discordUser.id] = initReasonRequestUser(reasonReq.discordUser.id);
