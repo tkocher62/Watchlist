@@ -697,7 +697,7 @@ async function generateReasonRequestEmbed (info, reason, user, issuer, active) {
 		.setThumbnail('https://i.imgur.com/NLbIUZk.png')
 		.addField('Player', "[" + await GetName(user.steamid) + " (" + user.steamid + ")](https://steamcommunity.com/profiles/" + user.steamid + ")")
 		.addField('Discipline',	t, true)
-		.addField('Staff Member', issuer.discordUser, true)
+		.addField('Staff Member', issuer.discordUser.username, true)
 		.setTimestamp()
 		.setFooter('Watchlist by Cyanox & Mitzey');
 		if (reason) {
@@ -739,10 +739,10 @@ function createReasonRequest (user, issuer, info) {
 	if (staffList[reasonReq.issuer.steamid] == null) return console.log("Steam ID (" + reasonReq.issuer.steamid + ") not configured, reason request failed.");
 	reasonReq.discordUser = bot.users.get(staffList[reasonReq.issuer.steamid]);
 
-  reasonReq.issuer.discordName = reasonReq.discordUser;
+  reasonReq.issuer.discordUser = reasonReq.discordUser;
 
-  if (watchlistData[reasonReq.user.steamid] != null && watchlistData[this.user.steamid].reason != null) {
-    reasonReq.reason = watchlistData[this.user.steamid].reason;
+  if (watchlistData[reasonReq.user.steamid] != null && watchlistData[reasonReq.user.steamid].reason != null) {
+    reasonReq.reason = watchlistData[reasonReq.user.steamid].reason;
   }
 
 	if (reasonRequests[reasonReq.discordUser.id] == null) {
@@ -790,7 +790,6 @@ function createReasonRequest (user, issuer, info) {
 
 	reasonReq.accept = function () {
 		if (reasonReq.state == 1) {
-				//Insert code for submitting the new watchlist
 				reasonRequests[this.discordUser.id].lastWatch = null;
 
 				var discipline;
@@ -1051,6 +1050,10 @@ tcpServer.on("error", async function(e) {
 // Debugging to catch any errors I need to find and patch
 process.on('uncaughtException', function(err) {
   console.log('Caught process critical exception "' + err.code + '": ' + err.stack);
+  if (err.stack && err.stack.error) {
+    console.log("Nested Error:", err.stack.error);
+    if (err.stack.error.code == "ETIMEDOUT") return restartBot();
+  }
 	if (err.code == 'ETIMEDOUT') return restartBot();
 	if (err.code == 'socket hang up') return restartBot();
   process.exit(1);
