@@ -7,7 +7,7 @@ The Discord bot provides a live list of players connected to a server, as well a
 ![](https://github.com/tkocher62/Watchlist/blob/exiled/liveview.png)
 
 ### User Lookup
-If a user is not currently connected to a server, you can lookup an ID through commands. An entry contains the puinished player with their punishment, the date in which the punishment was issued, and the issuer.
+If a user is not currently connected to a server, you can lookup an ID through commands. An entry contains the punished player with their punishment, the date in which the punishment was issued, and the issuer.
 
 ![](https://github.com/tkocher62/Watchlist/blob/exiled/lookup.png)
 
@@ -25,7 +25,7 @@ For example, if we were to click the check mark, the player that sent the report
 ![](https://github.com/tkocher62/Watchlist/blob/exiled/reportread.png)
 
 ### Automatic Additions
-This plugin automatically handles new entries being added into the databse. Upon performing an administrative action on a player in game, the punishment issuer will receive a direct message from the bot asking for their reason for doing so.
+This plugin automatically handles new entries being added into the database. Upon performing an administrative action on a player in game, the punishment issuer will receive a direct message from the bot asking for their reason for doing so.
 
 ![](https://github.com/tkocher62/Watchlist/blob/exiled/ban.png)
 
